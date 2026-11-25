@@ -1,0 +1,12 @@
+10-08 19:14:37.327     0     0 I I00000/HiLog: ========Zeroth log of type: init
+10-08 19:14:37.298   586   586 I I02C01/hmos_cust_carrier_mount/CustCarrierMount: MountCarrierToShared start
+10-08 19:14:37.298   586   586 I I02C01/hmos_cust_carrier_mount/CustCarrierMount: success to mount carrier to shared
+10-08 19:14:37.298   586   586 I I02C01/hmos_cust_carrier_mount/CustCarrierMount: MountCarrierToShared start
+10-08 19:14:37.298   586   586 I I02C01/hmos_cust_carrier_mount/CustCarrierMount: success to mount ANCO_APP_DATA to shared
+10-08 19:14:39.537  1185  1185 W I02C01/hmos_cust_carrier_mount/CustCarrierMount: not exsit CUST_GLOBAL_CARRIER_DIR or COTA_PARAM_CARRIER_DIR
+10-17 11:56:52.099 58383 58383 I A00001/com.huawei.hmsapp.hiai.vision/ML_CoBackboneServiceStub: queryOrDownloadModel end
+10-17 11:56:52.099 58383 58383 I A00001/com.huawei.hmsapp.hiai.vision/ML_CoBackboneServiceStub: queryOrDownloadModel:{"version":"2.2","modelDir":"/data/storage/el2/base/haps/coBackboneService/files/CvEngine_SemanticModel_V2_hms_group/1001001022"}
+10-17 11:56:52.099 58383 58383 D A00001/com.huawei.hmsapp.hiai.vision/ML_CoBackboneServiceStub: write JSON to file succeed and size is: 129
+10-17 11:56:52.099 58383 58383 I A00001/com.huawei.hmsapp.hiai.vision/ML_RpcServiceStub: get callback,code:502
+10-17 11:56:52.099 58383 58383 I A00001/com.huawei.hmsapp.hiai.vision/ML_RpcServiceStub: get callback success
+10-17 11:56:52.099 58383 58383 I A00001/com.huawei.hmsapp.hiai.vision/ML_MLRpcCallbackProxy: data typeof:string

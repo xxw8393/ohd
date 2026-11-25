@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# ohd 启动包装。两种形态自适应：
+#   开发形态：本脚本在 dist/ 下，jar 由 Gradle installDist 产出
+#   打包形态：lib/ 与 runtime/ 与本脚本同级（同事解压即用，无需 JDK）
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUNDLED="$SELF_DIR/runtime/bin/java"
+
+if [ -d "$SELF_DIR/lib" ]; then
+  LIB="$SELF_DIR/lib"
+elif [ -d "$SELF_DIR/../ohd-cli/build/install/ohd/lib" ]; then
+  LIB="$SELF_DIR/../ohd-cli/build/install/ohd/lib"
+else
+  echo "找不到 ohd 的 jar 目录" >&2
+  echo "开发时先在仓库根执行 dist/build.sh；分发包缺 lib/ 说明打包不完整" >&2
+  exit 1
+fi
+
+if [ -x "$BUNDLED" ]; then
+  JAVA="$BUNDLED"
+elif command -v java >/dev/null 2>&1; then
+  JAVA="java"
+else
+  echo "找不到 java，且未打包运行时：执行 dist/package.sh 生成" >&2
+  exit 1
+fi
+
+exec "$JAVA" -cp "$LIB/*" ohd.cli.MainKt "$@"

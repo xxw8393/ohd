@@ -1,0 +1,21 @@
+.gradle/
+build/
+*/build/
+.idea/
+*.iml
+dist/out/
+.kotlin/
+
+# 打包产物：dist/package.sh / package.bat 可重新生成（zip 27M + runtime 39M + 解压目录 42M）
+dist/runtime/
+dist/ohd-*/
+dist/*.zip
+
+# 真机证据：单会话几十 MB，hilog 会话可到 GB 级（2026-10-18 两个孤儿 log 会话各 12~13GB）
+ohd-evidence/
+# 旧隐藏目录。现行进程还在写时先留着，迁完可删
+.dsh/
+
+# 崩溃/采样副产物
+*.hprof
+hs_err_pid*.log

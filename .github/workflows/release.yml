@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+          - os: macos-latest
+            name: darwin-arm64
+          - os: windows-latest
+            name: windows-amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.13
+
+      - name: Run tests
+        run: gradle test
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x dist/build.sh dist/package.sh dist/ohd
+          ./dist/package.sh
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call gradle installDist
+          if errorlevel 1 exit /b 1
+          call dist\package.bat --skip-build
+          if errorlevel 1 exit /b 1
+          dir dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ohd-${{ matrix.name }}
+          path: dist/ohd-*.zip
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/ohd-*.zip
+          generate_release_notes: true

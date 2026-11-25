@@ -1,0 +1,5 @@
+# hilog 推断脚本（from->to 映射）
+tap 297 683   # Compose_0->Compose_1 → MultiInstance @16:03:44.549
+doubletap 483 1214   # Compose_1->Compose_2 → MultiInstance#2 @16:03:44.974
+key Back   # Compose_2->Compose_0 → Index @16:03:55.238
+doubletap 1028 761   # Compose_0->Compose_3 → carousel @16:03:56.329

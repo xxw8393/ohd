@@ -1,0 +1,99 @@
+
+-------------------------------[cpufreq]-------------------------------
+
+
+cmd is: cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq
+
+1530000
+
+cmd is: cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq
+
+1720000
+
+cmd is: cat /sys/devices/system/cpu/cpu1/cpufreq/cpuinfo_cur_freq
+
+1530000
+
+cmd is: cat /sys/devices/system/cpu/cpu1/cpufreq/cpuinfo_max_freq
+
+1720000
+
+cmd is: cat /sys/devices/system/cpu/cpu2/cpufreq/cpuinfo_cur_freq
+
+1530000
+
+cmd is: cat /sys/devices/system/cpu/cpu2/cpufreq/cpuinfo_max_freq
+
+1720000
+
+cmd is: cat /sys/devices/system/cpu/cpu3/cpufreq/cpuinfo_cur_freq
+
+1530000
+
+cmd is: cat /sys/devices/system/cpu/cpu3/cpufreq/cpuinfo_max_freq
+
+1720000
+
+cmd is: cat /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu5/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu5/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu6/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu6/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu8/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu8/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu9/cpufreq/cpuinfo_cur_freq
+
+558000
+
+cmd is: cat /sys/devices/system/cpu/cpu9/cpufreq/cpuinfo_max_freq
+
+2270000
+
+cmd is: cat /sys/devices/system/cpu/cpu10/cpufreq/cpuinfo_cur_freq
+
+1200000
+
+cmd is: cat /sys/devices/system/cpu/cpu10/cpufreq/cpuinfo_max_freq
+
+2695000
+
+cmd is: cat /sys/devices/system/cpu/cpu11/cpufreq/cpuinfo_cur_freq
+
+1200000
+
+cmd is: cat /sys/devices/system/cpu/cpu11/cpufreq/cpuinfo_max_freq
+
+2695000

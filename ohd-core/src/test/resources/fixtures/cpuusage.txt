@@ -1,0 +1,192 @@
+
+-------------------------------[cpuusage]-------------------------------
+
+Load average: 12.7 / 13.5 / 13.6; the cpu load average in 1 min, 5 min and 15 min
+CPU usage from 2026-10-17 12:05:04 to 2026-10-17 12:05:05
+Total: 4.65%; User Space: 1.13%; Kernel Space: 3.52%; iowait: 0.00%; irq: 0.00%; idle: 95.35%
+Details of Processes:
+    PID   Total Usage	   User Space    Kernel Space    Page Fault Minor    Page Fault Major    Name
+    7491       0.49%           0.15%          0.34%            8328                2502            hidumper_service
+    585        0.45%           0.24%          0.21%          292926                1971            hilogd         
+    1272       0.42%           0.07%          0.35%        10319098                2307            power_host     
+    24778      0.34%           0.16%          0.17%         2212847               13922            netmanager     
+    625        0.22%           0.07%          0.15%        120384070              150390            hiview         
+    1426       0.12%           0.05%          0.07%        10242832                1166            hdcd           
+    1353       0.10%           0.07%          0.02%          484794                3369            powermgr       
+    1357       0.07%           0.06%          0.01%        18936591                2707            netsysnative   
+    3527       0.07%           0.01%          0.06%         5028250             1625432            com.ohos.sceneboard
+    1377       0.04%           0.04%          0.00%          312976              166995            distributeddata
+    1374       0.04%           0.04%          0.00%         3228663              362532            foundation     
+    4972       0.04%           0.02%          0.01%            4009                1078            com.huawei.hmsapp.hiai.core
+    3147       0.02%           0.02%          0.00%          155246                3328            bms_broker     
+    56484      0.02%           0.01%          0.01%           10008               20221            com.ohos.sceneboard:AodSettingsAbility
+    4963       0.02%           0.00%          0.02%         1020374                1102            oam_hisi       
+    62298      0.01%           0.01%          0.00%            8063                7130            com.huawei.hmsapp.hiai.vision
+    3634       0.01%           0.01%          0.00%          189689               44242            com.ohos.medialibrary.medialibrarydata
+    3609       0.01%           0.01%          0.00%           69963                3682            com.huawei.hms.adsservice
+    2905       0.01%           0.01%          0.00%           18229                3593            com.huawei.hmos.location
+    2552       0.01%           0.01%          0.00%           80928                3752            deviceprofile  
+    1328       0.01%           0.01%          0.00%          150217                3533            softbus_server 
+    1316       0.01%           0.01%          0.00%            2865                2887            ui_service     
+    1078       0.01%           0.01%          0.00%         1080606               10433            telephony      
+    1043       0.01%           0.01%          0.00%          143228                1441            accesstoken_service
+    875        0.01%           0.01%          0.00%          613477                3249            huks_service   
+    820        0.01%           0.01%          0.00%          170340                6575            audio_server   
+    3228       0.01%           0.00%          0.01%          167994               12952            wifi_manager_service
+    3205       0.01%           0.00%          0.01%           16460                9561            media_analysis_service
+    1248       0.01%           0.00%          0.01%         6188684                1754            hmi_host       
+    1167       0.01%           0.00%          0.01%          416119                5710            file_monitor_service
+    981        0.01%           0.00%          0.01%         1022610                9496            resource_schedule_service
+    63097      0.00%           0.00%          0.00%             609                 296                           
+    63095      0.00%           0.00%          0.00%             568                 267                           
+    61301      0.00%           0.00%          0.00%             595                 434            intell_voice_host
+    61278      0.00%           0.00%          0.00%            3408                2085            intell_voice_service
+    61121      0.00%           0.00%          0.00%           23441                1820            com.huawei.hmos.aibase
+    56596      0.00%           0.00%          0.00%           13289               20050            com.ohos.sceneboard:SettingThemeComponentExtAbility
+    56559      0.00%           0.00%          0.00%           11907                9283            com.huawei.hmos.findservice
+    56265      0.00%           0.00%          0.00%          125048               27732            com.huawei.hmos.settings
+    53354      0.00%           0.00%          0.00%             610                 301                           
+    53352      0.00%           0.00%          0.00%             568                 277                           
+    52355      0.00%           0.00%          0.00%           16008                2156            advertising_service
+    47851      0.00%           0.00%          0.00%             535                 300                           
+    47848      0.00%           0.00%          0.00%             504                 271                           
+    46665      0.00%           0.00%          0.00%           11455                3328            com.huawei.hmos.inputmethod
+    46574      0.00%           0.00%          0.00%           19077               21924            com.samples.arkwebdemo:render
+    39914      0.00%           0.00%          0.00%             608                 297                           
+    39912      0.00%           0.00%          0.00%             568                 262                           
+    37104      0.00%           0.00%          0.00%           12613                1134                           
+    37103      0.00%           0.00%          0.00%          251237                1858                           
+    37086      0.00%           0.00%          0.00%             500                 882                           
+    32134      0.00%           0.00%          0.00%            1242                 874            file_system_service
+    31211      0.00%           0.00%          0.00%           26890                5772            com.huawei.hmos.inputmethod:inputMethod
+    26380      0.00%           0.00%          0.00%           15864                1132                           
+    26379      0.00%           0.00%          0.00%          320820                2213                           
+    26354      0.00%           0.00%          0.00%             502                 882                           
+    12267      0.00%           0.00%          0.00%           13493                6675            com.ohos.sceneboard:ScreenLockEditUIExtAbility
+    11301      0.00%           0.00%          0.00%             948                 622            el5_filekey_manager
+    11253      0.00%           0.00%          0.00%           16166                4790            atomicservice_ecological_rule_manager
+    11192      0.00%           0.00%          0.00%           15677                1132                           
+    11191      0.00%           0.00%          0.00%          272595                2377                           
+    11170      0.00%           0.00%          0.00%             496                 882                           
+    9693       0.00%           0.00%          0.00%            3375                3448            aiengine       
+    8222       0.00%           0.00%          0.00%           48416                4166            gameservice_server
+    7623       0.00%           0.00%          0.00%            5782               20287            com.tencent.compose:render
+    7155       0.00%           0.00%          0.00%           25675               41913            com.tencent.compose
+    6271       0.00%           0.00%          0.00%         1022135               12883            com.huawei.hms.floatingnavigation
+    6198       0.00%           0.00%          0.00%            4410               10559            video_processing_service
+    6190       0.00%           0.00%          0.00%             750                2441            deviceinfoservice
+    6108       0.00%           0.00%          0.00%          309767               24835            com.ohos.sceneboard:EngineServiceAbility:1
+    6020       0.00%           0.00%          0.00%           24820                5243            com.huawei.hmos.numberidentity
+    5773       0.00%           0.00%          0.00%              94                  60            apppool        
+    5610       0.00%           0.00%          0.00%            2815                3173            pasteboard_service
+    5604       0.00%           0.00%          0.00%            7102                1133            contexthub_ble_host
+    5602       0.00%           0.00%          0.00%            8673                3345            com.huawei.hms.pushservice
+    5406       0.00%           0.00%          0.00%          227878                2071            wpa_host       
+    5064       0.00%           0.00%          0.00%            1969                1019            dllite_service 
+    5021       0.00%           0.00%          0.00%           85664                3807            com.ohos.contactsdataability
+    4962       0.00%           0.00%          0.00%          166978               17495            hignss_110x_ohos
+    4836       0.00%           0.00%          0.00%            8337                4178            appgallery_service
+    3729       0.00%           0.00%          0.00%           22531                 329            bindfs         
+    3625       0.00%           0.00%          0.00%           26156                3385            com.huawei.hmsapp.intelligent
+    3592       0.00%           0.00%          0.00%         3241799               97373            com.huawei.hmos.aidataservice
+    3573       0.00%           0.00%          0.00%           47213                8195            com.huawei.hmos.aidispatchservice
+    3552       0.00%           0.00%          0.00%         3057386              217848            com.ohos.FusionSearch
+    3493       0.00%           0.00%          0.00%            4770                2946            nfc_service    
+    3492       0.00%           0.00%          0.00%           14532                5411            findnetwork    
+    3384       0.00%           0.00%          0.00%           17631                5741            nwebspawn      
+    3028       0.00%           0.00%          0.00%            4550                3482            com.huawei.hms.pafservice
+    2979       0.00%           0.00%          0.00%            6595                3128            com.huawei.hmos.walletservice
+    2795       0.00%           0.00%          0.00%            2878                2083            rgm_engine_plugin
+    2707       0.00%           0.00%          0.00%            3946                2663            asset_service  
+    2706       0.00%           0.00%          0.00%           51627               32731            com.samples.arkwebdemo
+    2419       0.00%           0.00%          0.00%           93663                1977            location_host  
+    2171       0.00%           0.00%          0.00%            2483                6837            usb_service    
+    1415       0.00%           0.00%          0.00%            1806                1681            thp_extra      
+    1405       0.00%           0.00%          0.00%           56385                4858            CollaborationFwk
+    1400       0.00%           0.00%          0.00%          437809                2394            accountmgr     
+    1399       0.00%           0.00%          0.00%           41646                2618            aps_manager    
+    1398       0.00%           0.00%          0.00%            4325                3843            av_session     
+    1397       0.00%           0.00%          0.00%          619483               47247            batterycare_service
+    1388       0.00%           0.00%          0.00%           54166                3795            camera_service 
+    1387       0.00%           0.00%          0.00%           30108                1951            client_cloud_cache_service
+    1386       0.00%           0.00%          0.00%            1800                2396            cloudfiledaemon
+    1383       0.00%           0.00%          0.00%            2496                1349            code_protect   
+    1382       0.00%           0.00%          0.00%         1081890                1083            data_monitor_service
+    1380       0.00%           0.00%          0.00%           11796                3281            device_manager 
+    1379       0.00%           0.00%          0.00%           59669                2319            display_engine_service
+    1376       0.00%           0.00%          0.00%            1274                2199            drm_service    
+    1373       0.00%           0.00%          0.00%            1911                2339            fusion_connectivity_manager_ext
+    1371       0.00%           0.00%          0.00%         1416879            41679925            render_service 
+    1370       0.00%           0.00%          0.00%        20371754               24101            hianalytics    
+    1368       0.00%           0.00%          0.00%          405837                4202            huawei_id_svc  
+    1366       0.00%           0.00%          0.00%         2337665                4345            inputmethod_service
+    1361       0.00%           0.00%          0.00%             985                 961            media_monitor  
+    1358       0.00%           0.00%          0.00%           43045                6322            media_service  
+    1347       0.00%           0.00%          0.00%           14621                1978            privacy_service
+    1346       0.00%           0.00%          0.00%            4573                2454            av_codec_service
+    1339       0.00%           0.00%          0.00%             924                 789            pin_auth_host  
+    1338       0.00%           0.00%          0.00%           50275                2441            security_guard 
+    1335       0.00%           0.00%          0.00%          387891              184777            parent_control_service
+    1330       0.00%           0.00%          0.00%        11981440                2376            sensors        
+    1322       0.00%           0.00%          0.00%            4730                 352            bms_behavior   
+    1321       0.00%           0.00%          0.00%            1937                2852            nearlink_service
+    1311       0.00%           0.00%          0.00%            6652                4069            useriam        
+    1309       0.00%           0.00%          0.00%          161305                4013            locationhub    
+    1308       0.00%           0.00%          0.00%            5940                1953            fingerprint_auth_host
+    1303       0.00%           0.00%          0.00%             986                1372            usb_host       
+    1301       0.00%           0.00%          0.00%           44093                2521            audio_host     
+    1300       0.00%           0.00%          0.00%          146917                2518            sensor_host    
+    1298       0.00%           0.00%          0.00%          101156                2546            comm_protocol_resource_manager
+    1292       0.00%           0.00%          0.00%            4883                1156            vibrator_host  
+    1291       0.00%           0.00%          0.00%             603                 497            input_user_host
+    1290       0.00%           0.00%          0.00%            1961                1254            codec_host     
+    1288       0.00%           0.00%          0.00%           41495               18419            factory_host   
+    1286       0.00%           0.00%          0.00%            8320                2288            bluetooth_service
+    1282       0.00%           0.00%          0.00%           91795               23728            allocator_host 
+    1281       0.00%           0.00%          0.00%           17030                1996            composer_host  
+    1280       0.00%           0.00%          0.00%             675                 574            lcd_host       
+    1279       0.00%           0.00%          0.00%            6290                1541            tp_host        
+    1274       0.00%           0.00%          0.00%            7218                2029            riladapter_host
+    1268       0.00%           0.00%          0.00%          631036              489707            battery_extra_host
+    1258       0.00%           0.00%          0.00%            1555                1701            blue_host      
+    1257       0.00%           0.00%          0.00%             709                 678            hwsched_host   
+    1256       0.00%           0.00%          0.00%             668                 588            off_find_host  
+    1254       0.00%           0.00%          0.00%             688                 597            nearlink_host  
+    1252       0.00%           0.00%          0.00%            7837                1516            user_auth_host 
+    1250       0.00%           0.00%          0.00%            1881                2041            face_auth_host 
+    1249       0.00%           0.00%          0.00%          335537                1820            wifi_host      
+    1245       0.00%           0.00%          0.00%            3379                1372            nfc_host       
+    1244       0.00%           0.00%          0.00%             748                 614            secure_element_host
+    1243       0.00%           0.00%          0.00%          104329                1463            perfgenius_host
+    1242       0.00%           0.00%          0.00%         1503614                3969            aptouch_daemon 
+    1211       0.00%           0.00%          0.00%           18162                3686            time_service   
+    1193       0.00%           0.00%          0.00%          216763               25105            push_manager_service
+    1190       0.00%           0.00%          0.00%           92784               24266            msdp           
+    1189       0.00%           0.00%          0.00%            1230                 810            isulad         
+    1096       0.00%           0.00%          0.00%            1477                1464            wallpaper_service
+    1040       0.00%           0.00%          0.00%            5089                4344            CameraDaemon   
+    1038       0.00%           0.00%          0.00%           51593                1422            mhcserver      
+    1035       0.00%           0.00%          0.00%             905                 735            hinetmanager   
+    1034       0.00%           0.00%          0.00%        12886893             1435338            hiaiserver     
+    1018       0.00%           0.00%          0.00%            2453                2259            wireless_hid_accessory_manager_ability
+    961        0.00%           0.00%          0.00%          127128                1551            resource_schedule_executor
+    903        0.00%           0.00%          0.00%          236117               17346            multimodalinput
+    893        0.00%           0.00%          0.00%           17773                1480            memmgrservice  
+    873        0.00%           0.00%          0.00%           27803                1942            healthsport_services
+    823        0.00%           0.00%          0.00%           75111                1717            concurrent_task_service
+    806        0.00%           0.00%          0.00%           10554                2890            accessibility  
+    804        0.00%           0.00%          0.00%             530                 845            bms_event      
+    802        0.00%           0.00%          0.00%             781                 540            rfile_user_phone
+    770        0.00%           0.00%          0.00%          428672                 904            udx_server     
+    634        0.00%           0.00%          0.00%            5713                7244            oeminfo_nvme_server
+    629        0.00%           0.00%          0.00%            1360                1269            teecd          
+    628        0.00%           0.00%          0.00%            6932                8187            cadaemon       
+    627        0.00%           0.00%          0.00%          983077               34227            appspawn       
+    626        0.00%           0.00%          0.00%           29836                 805            hdf_devmgr     
+    623        0.00%           0.00%          0.00%           33552                1621            param_watcher  
+    622        0.00%           0.00%          0.00%          124759                1700            samgr          
+    621        0.00%           0.00%          0.00%         5478019                2095            storage_daemon 
+    620        0.00%           0.00%          0.00%           34092                2372            storage_manager
+    605        0.00%           0.00%          0.00%            2826                1260            faultloggerd   
+    572        0.00%           0.00%          0.00%             865                 435            ueventd        
+    1          0.00%           0.00%          0.00%         1057020                3349            init           

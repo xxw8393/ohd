@@ -1,0 +1,4 @@
+enter:Compose_1=tap 297 683
+enter:Compose_2=doubletap 453 1099
+back:Compose_0=key Back
+enter:Compose_3=doubletap 1028 761
