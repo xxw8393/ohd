@@ -666,4 +666,68 @@ class WorldMapTest {
         assertNull(WorldMap.planTo(bundle, "zzz-not-here"))
     }
 
+    /**
+     * `confirmPage(verified = true)` 必须清掉同位元素的墓碑。
+     *
+     * 这是 map-first + `--expect` 验标成功后的唯一复活出口：元素位置没变，
+     * 所以 `mergeItems` 那条「位置变了才算复活」不会生效，只能靠这个分支。
+     * 修复前该分支无调用点（死代码），验标通过后墓碑永久残留。
+     */
+    @Test
+    fun verifiedConfirmClearsTombstoneInPlace() {
+        WorldMap.clear(bundle)
+        WorldMap.observePage(bundle, flat("会动的按钮"), sceneSwipes = 0)
+        val page = WorldMap.observePage(bundle, flat("会动的按钮"), sceneSwipes = 0)
+
+        WorldMap.invalidateItemCoords(bundle, page.id, "会动的按钮")
+        val dead = WorldMap.load(bundle).pages.getValue(page.id).items
+            .first { it.label == "会动的按钮" }
+        assertTrue(dead.coordsInvalidatedAt > 0L, "应当先有墓碑")
+        assertFalse(dead.coordsUsable, "带墓碑的坐标不可复用")
+
+        // 未验标：只涨 seenCount，不得清墓碑
+        WorldMap.confirmPage(bundle, page.id, verified = false)
+        assertTrue(
+            WorldMap.load(bundle).pages.getValue(page.id).items
+                .first { it.label == "会动的按钮" }.coordsInvalidatedAt > 0L,
+            "未验标不得清墓碑（『点完没崩』不等于『点对了』）",
+        )
+
+        // 验标通过：坐标被证实有效，必须复活
+        WorldMap.confirmPage(bundle, page.id, verified = true)
+        val alive = WorldMap.load(bundle).pages.getValue(page.id).items
+            .first { it.label == "会动的按钮" }
+        assertEquals(0L, alive.coordsInvalidatedAt, "验标通过必须清墓碑")
+        assertTrue(alive.coordsUsable, "复活后坐标应可复用")
+        // 坐标值本身不能被改写（没有新观测就不该动坐标）
+        assertNotNull(alive.centerX)
+        assertNotNull(alive.centerY)
+    }
+
+    /** 墓碑只清被验中的那一页，其他页不受影响（禁止整表复活）。 */
+    @Test
+    fun verifiedConfirmOnlyClearsItsOwnPage() {
+        WorldMap.clear(bundle)
+        val a = WorldMap.observePage(bundle, flat("甲页元素"), sceneSwipes = 0)
+        WorldMap.observePage(bundle, flat("甲页元素"), sceneSwipes = 0)
+        val b = WorldMap.observePage(bundle, flat("乙页元素"), sceneSwipes = 0, pushIfNew = true)
+        WorldMap.observePage(bundle, flat("乙页元素"), sceneSwipes = 0)
+
+        WorldMap.invalidateItemCoords(bundle, a.id, "甲页元素")
+        WorldMap.invalidateItemCoords(bundle, b.id, "乙页元素")
+
+        WorldMap.confirmPage(bundle, a.id, verified = true)
+
+        assertTrue(
+            WorldMap.load(bundle).pages.getValue(a.id).items
+                .first { it.label == "甲页元素" }.coordsUsable,
+            "被验中的页应复活",
+        )
+        assertFalse(
+            WorldMap.load(bundle).pages.getValue(b.id).items
+                .first { it.label == "乙页元素" }.coordsUsable,
+            "未被验中的页不得被连带复活",
+        )
+    }
+
 }

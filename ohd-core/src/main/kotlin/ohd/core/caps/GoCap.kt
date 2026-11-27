@@ -474,8 +474,15 @@ class GoCap : Capability {
             //    此时只用 mapTapPageId **精确**确认已知页（零 dump、零猜测）。
             // 2) 非 map-first（确实 dump 过）：树就是当前屏，照常 observePage。
             if (mapFirstHit && mapTapPageId != null) {
-                // verified=false：这一支没验标，只知道「点完没崩」，不足以清墓碑。
-                WorldMap.confirmPage(mapBundle, mapTapPageId!!, verified = false)
+                // 传真实验标结果：带 --expect 且通过时，这一坐标已被「点完确实到了预期屏」
+                // 证实，是比 mergeItems 那条「位置变了」更强的复活证据，必须清掉墓碑。
+                // 不给 expect 时 expectOk 恒为 true（见其上初始化），但那种情况下没有
+                // 任何验标发生，仍不能清墓碑，故显式要求 expect != null。
+                WorldMap.confirmPage(
+                    mapBundle,
+                    mapTapPageId!!,
+                    verified = expect != null && expectOk,
+                )
             } else {
                 LayoutCache.get(hdc)?.let { WorldMap.observePage(mapBundle, it) }
             }
