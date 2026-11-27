@@ -50,6 +50,9 @@ object LayoutCache {
                 t?.replace(Regex("\\s+"), " ")?.take(48)
             }
             .filter { it.length >= 2 }
+            // 状态栏时钟/系统手势提示每轮都变。若不剔除，指纹会跟着时间走，
+            // 同一个页面每次 dump 都算成新 page（实测清洗后跑 3 次 tree 就多出 2 页）。
+            .filter { !ohd.core.actions.SceneSignature.isNoiseLabel(it) }
             .toSortedSet()
         val material = buildString {
             append(flat.size)
@@ -139,6 +142,7 @@ object LayoutCache {
         fresh: Boolean = false,
         maxAgeMs: Long = DEFAULT_MAX_AGE_MS,
         pushIfNew: Boolean = false,
+        bundle: String? = null,
     ): Pair<List<LayoutNode>, String> {
         if (fresh) {
             // 只忘掉当前页身份，其它页仍保留；强制 dump
@@ -146,7 +150,8 @@ object LayoutCache {
         } else {
             current(hdc, maxAgeMs)?.let { return it.flat to "cache:${it.pageId}" }
         }
-        val flat = DeviceOps.captureLayout(hdc, session).flat()
+        // 传 bundle 让 dump 用 `-b` 限定窗口，避免把状态栏/系统手势并进树里
+        val flat = DeviceOps.captureLayout(hdc, session, bundle = bundle).flat()
         val e = put(hdc, flat, pushIfNew = pushIfNew)
         return flat to "dump:${e.pageId}"
     }

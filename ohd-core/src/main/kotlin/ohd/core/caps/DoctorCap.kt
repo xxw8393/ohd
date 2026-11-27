@@ -9,6 +9,7 @@ import ohd.core.DeviceManager
 import ohd.core.ExitCode
 import ohd.core.DeviceKind
 import ohd.core.Devices
+import ohd.core.actions.WorldMap
 import ohd.core.Hdc
 import ohd.core.OhdError
 import ohd.core.RunContext
@@ -155,7 +156,43 @@ class DoctorCap : Capability {
             val df = dev.shell("df -h /data | tail -1", 10_000)
             if (df.ok && df.stdout.isNotBlank()) checks += Check.ok("disk", df.stdout.trim())
         }
+        // 世界地图体检：膨胀与垃圾数据会直接拖慢每次 go/tree（21MB 单文件一次 encode 就 400ms）
+        checks += worldMapChecks()
+
         return finish(ctx, checks, started)
+    }
+
+    /**
+     * 世界地图健康检查。
+     *
+     * 只读、不落盘：读内存态与磁盘体积，不触发 observePage / prune / clean。
+     * 判据来自实测：正常形态约 4.4MB / 891 页 / 0 垃圾 item；
+     * 膨胀到 21.8MB 时曾有 90% 重复页 + 33% 垃圾 item。
+     */
+    private fun worldMapChecks(): List<Check> {
+        val files = WorldMap.installedMaps()
+        if (files.isEmpty()) return listOf(Check.ok("worldmap", "无存档（首次使用后生成）"))
+        val out = mutableListOf<Check>()
+        for ((bundle, bytes) in files) {
+            val h = runCatching { WorldMap.health(bundle) }.getOrNull()
+            if (h == null) {
+                out += Check.warn("worldmap.$bundle", "无法解析（${bytes / 1024}KB）")
+                continue
+            }
+            val desc = "${h.pages} 页 / ${h.items} item / 盘上 ${h.bytes / 1024}KB（正文 ${h.rawBytes / 1024}KB）"
+            val dupPct = if (h.pages > 0) h.duplicatePages * 100 / h.pages else 0
+            val bad = h.bloatedBytes || h.bloatedPages || h.junkItems > 0
+            out += if (bad) {
+                Check.warn(
+                    "worldmap.$bundle",
+                    "$desc；重复页 ${h.duplicatePages}($dupPct%)、垃圾 item ${h.junkItems} —— " +
+                        "跑 `ohd map clean --bundle $bundle` 清洗",
+                )
+            } else {
+                Check.ok("worldmap.$bundle", desc)
+            }
+        }
+        return out
     }
 
     private fun finish(ctx: RunContext, checks: List<Check>, startedMs: Long): Int {

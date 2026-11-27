@@ -13,6 +13,55 @@ import ohd.core.parsers.LayoutNode
  */
 object UiReady {
 
+    /**
+     * 前台包查询的最短复用间隔。
+     *
+     * 查一次前台要跑 `aa dump -a`，设备侧实测 134–229ms，而一次 `go` 里会查 2–4 次
+     * （点前、收尾、batchSwipe 每滑一次），一分钟的 monkey 跑下来纯属重复劳动。
+     * 前台状态不会在几十毫秒内变，按 5s 节流：期间复用上次结果，不重复打设备。
+     *
+     * 选 5s 的依据：正常操作节奏下一步（认路+点击+验标）就是秒级，
+     * 5s 内前台几乎不可能变；而真掉桌面时，最坏晚 5s 发现，代价是作废一轮，可接受。
+     *
+     * 粒度：**进程内**缓存，按 (设备, 包) 键。不跨进程 —— 每条命令新起 JVM，
+     * 跨进程缓存要额外落盘且引入失效问题，收益为零（命令间本就该重新确认）。
+     */
+    private const val FG_TTL_MS = 5_000L
+
+    private data class FgStamp(val bundles: List<String>, val atMs: Long)
+
+    private val fgCache = java.util.concurrent.ConcurrentHashMap<String, FgStamp>()
+
+    /**
+     * 带 TTL 的前台包查询：5s 内复用，过期或 [force] 才真正执行 `aa dump -a`。
+     */
+    fun foregroundCached(hdc: Hdc, bundle: String, force: Boolean = false): List<String> {
+        val key = "${hdc.connectKey ?: hdc.kind.label}|$bundle"
+        val now = System.currentTimeMillis()
+        if (!force) {
+            fgCache[key]?.let { if (now - it.atMs <= FG_TTL_MS) return it.bundles }
+        }
+        val fresh = runCatching { DeviceOps.foregroundBundles(hdc) }.getOrDefault(emptyList())
+        if (fresh.isNotEmpty()) fgCache[key] = FgStamp(fresh, now)
+        return fresh
+    }
+
+    /** 明确的前台失效（如主动 aa start 之后），下次查询必真打设备。 */
+    fun invalidateForeground(hdc: Hdc, bundle: String) {
+        fgCache.remove("${hdc.connectKey ?: hdc.kind.label}|$bundle")
+    }
+
+    /**
+     * 已知某包在前台时直接记进缓存。
+     *
+     * 用于「`dumpLayout -b` 成功返回」这种**比 `aa dump -a` 更强**的证据：
+     * 既然能 dump 出目标窗口的树，目标必然在前台，不必再跑一条 shell 去确认。
+     */
+    fun rememberForeground(hdc: Hdc, bundle: String) {
+        fgCache["${hdc.connectKey ?: hdc.kind.label}|$bundle"] =
+            FgStamp(listOf(bundle), System.currentTimeMillis())
+    }
+
     data class Report(
         val awake: Boolean,
         val foreground: String?,
@@ -55,20 +104,33 @@ object UiReady {
      * 操作前确认目标包仍在前台；已掉到桌面则中止（禁止继续点）。
      * @return 当前认为的前台包名
      */
+    /**
+     * 确认仍在目标 App 内。
+     *
+     * [flat] 非空时**不再单独跑 `aa dump -a`**（实测 358ms/次）：
+     * 调用方刚 dump 完这棵树，它就是当前界面的事实。此时只需判「是不是桌面」。
+     *
+     * 要判「前台是不是目标包」得靠 dump 本身 —— `DeviceOps.captureLayout(bundle=)`
+     * 在 `-b` 目标不在前台时会抛错（退化空树），调用链上已经拦住了。
+     * 只有拿不到树（`flat == null`，例如滑动后只想快速确认）时才退回查前台。
+     */
     fun assertInApp(
         hdc: Hdc,
         bundle: String,
         flat: List<LayoutNode>? = null,
         ability: String = "EntryAbility",
         pullBackOnce: Boolean = true,
+        forceFg: Boolean = false,
     ): String {
-        if (flat != null && looksLikeDesktop(flat)) {
+        if (flat != null) {
+            if (!looksLikeDesktop(flat)) return bundle
             if (pullBackOnce) {
                 hdc.shell("aa start -b $bundle -a $ability", 15_000)
                 Thread.sleep(800)
                 LayoutCache.invalidate(hdc)
+                invalidateForeground(hdc, bundle)
             }
-            val again = runCatching { DeviceOps.captureLayout(hdc, null).flat() }.getOrNull()
+            val again = runCatching { DeviceOps.captureLayout(hdc, null, bundle = bundle).flat() }.getOrNull()
             if (again != null && looksLikeDesktop(again)) {
                 throw OhdError(
                     ExitCode.ASSERT_FAILED,
@@ -76,13 +138,16 @@ object UiReady {
                     "ohd 已停止注入；请重新 aa start $bundle 后再 go",
                 )
             }
+            return bundle
         }
-        val fgs = runCatching { DeviceOps.foregroundBundles(hdc) }.getOrDefault(emptyList())
+        val fgs = foregroundCached(hdc, bundle, force = forceFg)
         if (bundle in fgs) return bundle
         if (pullBackOnce) {
             hdc.shell("aa start -b $bundle -a $ability", 15_000)
             Thread.sleep(800)
-            val fgs2 = runCatching { DeviceOps.foregroundBundles(hdc) }.getOrDefault(emptyList())
+            // 刚主动切过前台，缓存必然已过期：强制重查，不能吃 TTL 内的旧值
+            invalidateForeground(hdc, bundle)
+            val fgs2 = foregroundCached(hdc, bundle, force = true)
             if (bundle in fgs2) return bundle
         }
         throw OhdError(
@@ -115,8 +180,29 @@ object UiReady {
             notes += "wakeup"
         }
 
-        var foreground = runCatching { DeviceOps.foregroundBundle(hdc, session) }.getOrNull()
         val target = bundle?.takeIf { it.isNotBlank() }
+        // 有 target 时用 `dumpLayout -b <target>` 一次拿到「树 + 是否在前台」，
+        // 取代原来独立的 `aa dump -a`（实测 358ms/次）。
+        // 无 target（如 wait 不指定包）时没法用 -b 判前台，才退回查 aa dump -a。
+        var foreground: String? = null
+        if (target != null && hdc.kind == DeviceKind.OHOS) {
+            // 先在缓存里找；命中说明最近刚确认过，不必再 dump
+            foreground = foregroundCached(hdc, target).firstOrNull()
+            if (foreground == null) {
+                // 未命中：用一次 dump 探活。目标不在前台时 captureLayout 会抛
+                // 「前台不是 X」（退化空树判据），这里接住并走 aa start 拉回。
+                foreground = runCatching {
+                    DeviceOps.captureLayout(hdc, session, bundle = target)
+                    target
+                }.getOrNull()
+                if (foreground != null) {
+                    runCatching { rememberForeground(hdc, target) }
+                }
+            }
+        }
+        if (foreground == null) {
+            foreground = runCatching { DeviceOps.foregroundBundle(hdc, session) }.getOrNull()
+        }
         if (target != null) {
             if (foreground != target) {
                 notes += "fg_was=${foreground ?: "?"}"
@@ -129,7 +215,8 @@ object UiReady {
                     else -> notes += "fg_skip_${hdc.kind.label}"
                 }
                 Thread.sleep(700)
-                foreground = runCatching { DeviceOps.foregroundBundle(hdc, session) }.getOrNull()
+                invalidateForeground(hdc, target)
+                foreground = foregroundCached(hdc, target, force = true).firstOrNull()
             }
             if ((hdc.kind == DeviceKind.OHOS || hdc.kind == DeviceKind.ANDROID) && foreground != target) {
                 throw OhdError(

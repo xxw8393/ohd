@@ -77,7 +77,6 @@ class ExtTest {
 
     @Test
     fun `无执行位的裸脚本拒绝执行`() {
-        if (System.getProperty("os.name").lowercase().contains("win")) return
         val dir = tempDir()
         val f = write(dir, "raw", "#!/bin/sh\necho hi\n")
         Files.setPosixFilePermissions(f, setOf(PosixFilePermission.OWNER_READ))

@@ -1,47 +1,11 @@
-# ohd — 跨平台移动端真机能力与取证工具箱
+# ohd — 移动端真机能力工具箱
 
-**ohd**（OpenHarmony / Android / iOS Device Toolkit）是一个面向**开发者与 AI Agent** 的跨平台真机操控、性能观测与缺陷取证 CLI 工具。
-
-它将零散的 `hdc` / `adb` / `simctl` / `idb` / `hidumper` / `uitest` / `llvm-addr2line` 能力收敛为一套统一的命令行接口，默认输出给人读的紧凑表格，加上 `--json` 即输出结构化数据供 AI Agent 直接消费，并自动将每次操作的截图、日志、内存采样与崩溃现场归档为带 `manifest.json` 的证据包。
-
----
-
-## 它能做什么？
-
-- **UI 观测与可信交互**：`tree`（节点树与中心点）、`shot`（叠加 `--grid` 网格 / `--cross` 十字准星 / `--boxes` 节点框）、`tap` / `input` / `go`（先认路再点击，避免盲点错点）、`record` / `replay`（动作录制与坐标自校准回放）。
-- **深度性能与内存剖析**：`mem`（Pss / GL / Graph / Native Heap 分类明细）、`cpu`（总占用与逐核频率）、`dmabuf`（DMA buffer 按标签/inode 增量归因）、`watch`（持续采样输出 CSV + 斜率/阶梯/平台期趋势判定）。
-- **长稳压测与崩溃闭环**：`monkey`（随机压测、自动生成复现脚本、支持 `--keep-a11y` 激活无障碍热路径）、`soak` / `monitor`（后台旁路观测）、`crash` + `sym`（自动拉取 faultlog 并用 `llvm-addr2line` + `buildId` 严格校验符号化）、`ab`（同设备同 seed 对比两个包的 PSS/DMA/崩溃差异）。
-- **证据打包与交付**：`bundle`（一键打包近期现场为标准缺陷证据包）、`analyze` / `report`（自动提炼崩溃栈与内存指标生成 `report.md`）。
-
----
-
-## 为什么比类似工具更好用？
-
-| 痛点场景 | 传统工具（原生 CLI / 常规压测脚本） | `ohd` 的解法 |
-|---|---|---|
-| **多端命令割裂** | OHOS 记 `hdc`/`hidumper`/`uitest`，Android 记 `adb`/`dumpsys`，iOS 记 `simctl`/`idb`，格式各异 | **一套统一 CLI** 自动探测平台，统一参数、返回码与输出结构 |
-| **AI Agent 难以稳定驱动真机** | 传统命令行输出非结构化、缺乏坐标校对机制，AI 容易「盲 tap」或误读日志 | **Agent-Native 设计**：原生 `--json` 输出 + `shot --grid` 视觉标尺 + `skills/` 开箱即用的 AI 技能包 |
-| **长稳压测只见崩溃不见现场** | 普通 monkey 跑崩后日志被冲掉、复现路径丢失，内存数据靠事后翻 log | **增量落盘 + 现场闭环**：崩溃瞬间自动抓取栈与最近操作脚本；采样实时写 CSV，进程被杀不丢数据 |
-| **内存与崩溃排查门槛高** | `hidumper` / `mm_dmabuf_info` 原始文本冗长，符号化需手动对齐 `buildId` 与偏移 | **真机实测解析器**：直接提取 Graph/GL/DMA 增量，`sym` 强制校验 `buildId` 防止出假栈 |
-| **环境配置繁琐** | 依赖本地 JDK、Python 环境及各类脚本库 | **零依赖分发**：通过 `jlink` 打包自带精简 JRE，GitHub Release 下载解压即用 |
-
----
-
-## AI 驱动（Skills）
-
-仓库内置了 [`skills/`](skills/) 目录，包含专为 AI 编程助手（如 Antigravity / Cursor / Claude Code 等）编写的标准技能规范：
-
-- `ohd-device-verify`（OHOS）：真机操作、截图定位、抓崩溃与生成缺陷证据包的标准闭环。
-- `ohd-cross-platform-verify`（Android & iOS）：Android（`adb`）与 iOS（`simctl`/`devicectl`/`idb`）的设备接入、能力边界与验证流。
-- `ohd-ui-action-validity`（全平台）：强制「认路 → 点当轮坐标 → 验地标」的 UI 操作规范，杜绝盲点。
-- `ohd-a11y-uitest-activate`（OHOS）：激活 OHOS/Compose 无障碍热路径进行等价压测。
-- `ohd-monkey-scene-capture`（OHOS）：长时间 monkey 压测与内存场景采集联动方案。
-
-将 `skills/ohd-*` 复制到你的 `~/.agents/skills/`（或项目的 `.agents/skills/`）中，即可直接让 AI 自动驱动真机完成回归验证与问题定位。
-
----
+把「操作真机 / 取证 / 性能观测」收敛为一个跨平台 CLI：默认给人读的紧凑输出，`--json` 给 agent 消费，产物统一归档并带 manifest。
 
 平台：**OHOS**（hdc）/ **Android**（adb）/ **iOS**（simctl 模拟器、devicectl 真机、idb 触摸注入）。`--platform` 可显式指定，默认自动探测。
+
+设计文档：[`DESIGN.md`](DESIGN.md)（含能力清单、证据包规范、跨端细则、里程碑）。
+给 AI 承接用的精简上下文：[`LLM_CONTEXT.md`](LLM_CONTEXT.md)（新会话先读这份，按需再查 DESIGN）。
 
 ## 前置
 
@@ -109,9 +73,9 @@ dist\build.bat             # 只构建（Windows）
 | CPU | ✓ | ✓ | ✗ | ✗ |
 | 崩溃 | ✓ | ✓ | ✓ | ✗（目录无样本） |
 | **触摸注入 / monkey / replay** | ✓ | ✓ | **✓（idb）** | 代码已通，真机未验证 |
-| UI 树 | ✓ | ✓ | ✓（idb `describe-all`） | ✓（idb `describe-all`） |
+| UI 树 | ✓ | ✓ | 数据源已就绪（idb `describe-all`），`tree` 未放开 | 同左 |
 
-拿不到的维度直接跳过或明确拒绝，不做占位编造。
+拿不到的维度直接跳过或明确拒绝，不做占位编造。iOS 内部差异见 `DESIGN.md` §94–§97。
 
 ## 常用命令
 
@@ -123,9 +87,10 @@ ohd monkey --bundle com.tencent.compose --duration 10h --keep-going \
   --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 \
   --tag Konan_main --exclude '(?i)vsync'
 
-# 无障碍热路径对等 DevEco Testing（uitest daemon + dump ping）
-ohd monkey --bundle com.tencent.compose --duration 2h --keep-going --keep-a11y \
+# OHOS 默认已 keep-a11y（uitest daemon + dump ping，对齐 DevEco）
+ohd monkey --bundle com.tencent.compose --duration 2h --keep-going \
   --a11y-ping-every 10 --tag ComposeA11y
+# 对照排噪才关：--no-keep-a11y
 ```
 
 | 参数 | 说明 |
@@ -136,7 +101,7 @@ ohd monkey --bundle com.tencent.compose --duration 2h --keep-going --keep-a11y \
 | `--full` | 保留完整字段；不加时代码默认 **compat**（只留 `日期 时间 消息`） |
 | `--max-size` | 日志上限，默认 `0` 不限；超限由 LogWatchdog 截断回收 |
 | `--keep-going` | 崩溃后继续跑满时长（不加以首次崩溃结束，10h 长跑必加） |
-| `--keep-a11y` | 保活 uitest + accessibility dump，对齐 DevEco 无障碍热路径压测 |
+| （默认）keep-a11y | OHOS **默认开**：保活 uitest + accessibility dump；`--no-keep-a11y` 关掉 |
 | `--layout-ttl 20` | 布局抓取间隔上限，产物减半（约 250 MB / 10h） |
 
 注意：10 h 必须脱管启动（`Popen(..., start_new_session=True)`），否则终端/IDE 退出会带走压测。

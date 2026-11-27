@@ -12,17 +12,15 @@ class HdcArgvTest {
 
     @Test
     fun argvKeepsShellCommandAsSingleElement() {
-        val p = Paths.get("/tmp/hdc")
-        val hdc = Hdc(p, "DEV1")
+        val hdc = Hdc(Paths.get("/tmp/hdc"), "DEV1")
         val argv = hdc.argv("shell", "uitest uiInput click 100 200")
-        assertEquals(listOf(p.toString(), "-t", "DEV1", "shell", "uitest uiInput click 100 200"), argv)
+        assertEquals(listOf("/tmp/hdc", "-t", "DEV1", "shell", "uitest uiInput click 100 200"), argv)
     }
 
     @Test
     fun argvWithoutDeviceHasNoTargetFlag() {
-        val p = Paths.get("/tmp/hdc")
-        val hdc = Hdc(p)
-        assertEquals(listOf(p.toString(), "list", "targets"), hdc.argv("list", "targets"))
+        val hdc = Hdc(Paths.get("/tmp/hdc"))
+        assertEquals(listOf("/tmp/hdc", "list", "targets"), hdc.argv("list", "targets"))
     }
 
     @Test
@@ -135,42 +133,30 @@ class EnvDiscoveryTest {
 
     @Test
     fun explicitHdcWins() {
-        val p = Files.createTempFile("fake-hdc", if (Platform.isWindows) ".exe" else "")
-        try {
-            val env = Env(explicitHdc = p.toString(), sysenv = { null })
-            assertEquals(p.toAbsolutePath().normalize(), env.hdc.path?.toAbsolutePath()?.normalize())
-        } finally {
-            Files.deleteIfExists(p)
-        }
+        val env = Env(explicitHdc = "/opt/fake/hdc", sysenv = { null })
+        assertEquals(Paths.get("/opt/fake/hdc"), env.hdc.path)
     }
 
     @Test
     fun envVariableUsedWhenNoArgument() {
-        val p = Files.createTempFile("env-hdc", if (Platform.isWindows) ".exe" else "")
-        try {
-            val env = Env(sysenv = { name -> if (name == "OHD_HDC") p.toString() else null })
-            assertEquals(p.toAbsolutePath().normalize(), env.hdc.path?.toAbsolutePath()?.normalize())
-        } finally {
-            Files.deleteIfExists(p)
-        }
+        val env = Env(sysenv = { name -> if (name == "OHD_HDC") "/env/hdc" else null })
+        assertEquals(Paths.get("/env/hdc"), env.hdc.path)
     }
 
     @Test
     fun sdkSubdirPickedByVersion() {
         val tmp = Files.createTempDirectory("ohd-sdk")
         try {
-            val binName = if (Platform.isWindows) "hdc.exe" else "hdc"
             for (v in listOf("9", "20", "12")) {
                 val dir = tmp.resolve(v).resolve("toolchains")
                 Files.createDirectories(dir)
-                val hdc = dir.resolve(binName)
+                val hdc = dir.resolve("hdc")
                 Files.writeString(hdc, "#!/bin/sh\nexit 0\n")
                 hdc.toFile().setExecutable(true)
             }
             val env = Env(sysenv = { name -> if (name == "OHOS_SDK_HOME") tmp.toString() else null })
             val path = env.hdc.path
-            val norm = path.toString().replace('\\', '/')
-            assertTrue(norm.contains("/20/"), "应选版本号最大的 SDK：$path")
+            assertTrue(path != null && path.toString().contains("/20/"), "应选版本号最大的 SDK：$path")
         } finally {
             tmp.toFile().deleteRecursively()
         }

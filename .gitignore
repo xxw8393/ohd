@@ -19,3 +19,4 @@ ohd-evidence/
 # 崩溃/采样副产物
 *.hprof
 hs_err_pid*.log
+docs

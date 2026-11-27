@@ -42,6 +42,13 @@ data class LayoutNode(
     val visible: Boolean,
     val bundleName: String?,
     val depth: Int,
+    /**
+     * 是否可滚动容器（dump 的 `scrollable` 属性）。
+     *
+     * 用来把布局树切成「静态骨架」与「滚动内容」：滚动子树里的元素会随滑动位移，
+     * 不能参与页面身份判定，其坐标也不能跨轮复用。
+     */
+    val scrollable: Boolean = false,
     val children: List<LayoutNode> = emptyList(),
 ) {
     fun flatten(): List<LayoutNode> = buildList {
@@ -83,7 +90,11 @@ object LayoutParser {
         val children = (obj["children"] as? JsonArray)?.mapNotNull { toNode(it, depth + 1) } ?: emptyList()
         if (attrs == null) {
             return if (children.isEmpty()) null
-            else LayoutNode(null, null, null, null, null, false, true, true, null, depth, children)
+            else LayoutNode(
+                text = null, id = null, type = null, description = null, bounds = null,
+                clickable = false, enabled = true, visible = true,
+                bundleName = null, depth = depth, children = children,
+            )
         }
         return LayoutNode(
             text = str(attrs, "text")?.takeIf { it.isNotBlank() },
@@ -95,6 +106,7 @@ object LayoutParser {
             clickable = bool(attrs, "clickable"),
             enabled = bool(attrs, "enabled"),
             visible = bool(attrs, "visible"),
+            scrollable = bool(attrs, "scrollable"),
             bundleName = str(attrs, "bundleName"),
             depth = depth,
             children = children,

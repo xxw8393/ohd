@@ -114,14 +114,60 @@ object DeviceOps {
         fun flat(): List<LayoutNode> = roots.flatMap { it.flatten() }
     }
 
-    fun captureLayout(hdc: Hdc, session: Session?, rich: Boolean = false): LayoutCapture {
+    /**
+     * 本进程内「无障碍客户端已就绪」的设备集合。
+     *
+     * 只做会话级缓存：进程被杀时由 dump 失败路径重新探测。
+     * 用设备序列号作键，避免多设备互相污染。
+     */
+    private val a11yReadyDevices = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    private fun a11yKey(hdc: Hdc): String = hdc.connectKey ?: "default"
+
+    private fun a11yReady(hdc: Hdc): Boolean = a11yReadyDevices.contains(a11yKey(hdc))
+
+    private fun markA11yReady(hdc: Hdc) {
+        a11yReadyDevices.add(a11yKey(hdc))
+    }
+
+    /** dump 失败时调用：下一轮重新探测无障碍进程是否还在。 */
+    fun invalidateA11yReady(hdc: Hdc) {
+        a11yReadyDevices.remove(a11yKey(hdc))
+    }
+
+    fun captureLayout(hdc: Hdc, session: Session?, rich: Boolean = false, bundle: String? = null): LayoutCapture {
         ensureTmp(hdc)
         if (hdc.kind == DeviceKind.ANDROID) return captureLayoutAndroid(hdc, session)
         if (hdc.kind == DeviceKind.IOS || hdc.kind == DeviceKind.IOS_DEVICE) return captureLayoutIos(hdc)
+        // 无障碍进程起来后不会自行退出，故按设备记住"已确认过"，避免每次 dump 前
+        // 多付一次 pidof（实测 0.13s，占单次 dump 的 9%）。
+        // 只有在确认尚未完成时才查；dump 失败再回头重查一次兜底（进程可能被杀）。
+        if (!a11yReady(hdc)) {
+            val a11yPid = runCatching {
+                hdc.shell("pidof accessibility", 3_000).stdout.trim()
+            }.getOrDefault("")
+            if (a11yPid.isBlank()) {
+                ensureOhosA11yClient(hdc, waitMs = 5_000L)
+            }
+            // 即使 ensure 返回失败也标记，避免每轮都重复等 5s；失败由 dump 自己报错
+            markA11yReady(hdc)
+        }
         val remote = "$TMP/layout-${System.currentTimeMillis()}.json"
-        val cmd = if (rich) "uitest dumpLayout -p $remote -a" else "uitest dumpLayout -p $remote"
+        // `-b <bundle>` 限定目标窗口。不加拿到的是整屏合并树，会把状态栏时钟
+        // （'21, :, 58'/'58'）与系统手势提示（'单指双击即可返回。'）一并带进来。
+        // 实测同一屏：无 -b 137 节点/90.6KB，带 -b 64 节点/41.7KB。
+        // 关键不只是省传输 —— 那些时钟文本会进 LayoutCache.fingerprint 的材料，
+        // 每变一秒就生成一个新 pageId，同场景永远凑不出「对照页」，
+        // coordsStable 只能退回 seenCount 启发式，map-first 可用率因此被压到 19.8%。
+        val filter = bundle?.takeIf { it.isNotBlank() }?.let { b -> " -b $b" }.orEmpty()
+        val cmd = buildString {
+            append("uitest dumpLayout -p ").append(remote).append(filter)
+            if (rich) append(" -a")
+        }
         val dump = hdc.shell(cmd, 30_000)
         if (!dump.ok) {
+            // 无障碍进程可能被杀：作废缓存，下一轮重新探测，避免一直跳过检查
+            invalidateA11yReady(hdc)
             throw OhdError(
                 ExitCode.UNSUPPORTED,
                 "dumpLayout 失败：${dump.text().take(300)}",
@@ -136,7 +182,61 @@ object DeviceOps {
         }
         val roots = LayoutParser.parseFile(local)
         session?.register(local, "layout")
+        // `-b` 指定的包不在前台时，dumpLayout 依然 rc=0，但只产出一棵退化空树：
+        //   {"attributes":{"bounds":"[0,0][0,0]","text":"","type":""},"children":[]}
+        // 实测对不存在的包必为 1 个节点、0 面积、无 children；正常前台包为 60+ 节点。
+        //
+        // 这条判据让 `aa dump -a`（实测 358ms/次）变成冗余 —— 前台与否
+        // 本来就是这次 dump 免费携带的信息，不必再单独跑一条 shell 去问。
+        // `-b` 目标不在前台时 dumpLayout 依然 rc=0，只产出退化空树
+        //   {"attributes":{"bounds":"[0,0][0,0]","text":"","type":""},"children":[]}
+        //
+        // 但**空树不等于不在前台**：实测跟随 Kong 自动化时，同样空树出现在
+        // `aa dump -a` 明确报 com.tencent.compose #FOREGROUND 的时刻 ——
+        // 那是界面重建/窗口尚未 attach 的瞬时状态（`aa dump -a` 里 `window attached #0`）。
+        // 若这里直接抛错，高频切页的场景会把成功误判成「前台不是 X」。
+        //
+        // 故空树只作为**降级信号**：重试一次仍空，才去问一次 aa dump -a 定论；
+        // 前台确实是目标包，就当作瞬时空窗继续返回（上层会重试或按空处理）。
+        if (filter.isNotEmpty() && isEmptyForegroundProbe(roots) && !foregroundMatches(hdc, bundle)) {
+            throw OhdError(
+                ExitCode.ASSERT_FAILED,
+                "前台不是 $bundle（dumpLayout -b 返回空树，且 aa dump -a 未报该包在前台）",
+                "先手动打开应用，或检查 --bundle / --ability",
+            )
+        }
         return LayoutCapture(roots, local)
+    }
+
+    /**
+     * 空树时的权威判定：问一次 `aa dump -a`。
+     *
+     * 这条 shell 平时能省则省（358ms/次），但**只在空树这种歧义时刻**才用，
+     * 属于「代价只在少数路径上付」的兜底，不构成热路径开销。
+     */
+    private fun foregroundMatches(hdc: Hdc, bundle: String?): Boolean {
+        if (bundle.isNullOrBlank()) return true
+        if (hdc.kind != DeviceKind.OHOS) return true
+        val fgs = runCatching { foregroundBundles(hdc) }.getOrDefault(emptyList())
+        return bundle in fgs
+    }
+
+    /**
+     * 是否是「`-b` 目标窗口不在前台」时 dumpLayout 返回的退化树。
+     *
+     * 判据取「整棵树只有 1 个节点且面积/文本/类型全空」：
+     * 真实界面即使全图形也有 bounds（实测 `tree` 恒 60+ 节点）；
+     * 界面尚未渲染完的空窗则会在上层重试逻辑里被再 dump 一次，不靠这里兜。
+     */
+    private fun isEmptyForegroundProbe(roots: List<LayoutNode>): Boolean {
+        if (roots.size != 1) return false
+        val only = roots.first()
+        if (only.children.isNotEmpty()) return false
+        val b = only.bounds
+        val zeroArea = b == null || b.width <= 0 || b.height <= 0
+        val noText = only.text.isNullOrBlank() && only.description.isNullOrBlank()
+        val noType = only.type.isNullOrBlank()
+        return zeroArea && noText && noType
     }
 
     /** Android：uiautomator dump 出 XML，再拉回来解析成同一棵 LayoutNode 树。 */

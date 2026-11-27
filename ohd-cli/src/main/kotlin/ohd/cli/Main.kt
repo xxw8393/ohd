@@ -69,6 +69,9 @@ private val BOOL_FLAGS = setOf(
     "debug", "help", "version", "require-device", "quiet",
     "redact", "report", "zip", "latest-only", "all", "ext-raw",
     "tcp-only", "process", "unset", "no-compress", "no-system",
+    // go 的地图捷径默认开启，故需同时认否定式；两者都必须在这里，
+    // 否则 `--map-first --grep x` 会把 `--grep` 当成它的值吞掉。
+    "map-first", "no-map-first",
 )
 
 fun main(args: Array<String>) {
@@ -87,6 +90,9 @@ fun main(args: Array<String>) {
         if (args.contains("--debug")) e.printStackTrace()
         else System.err.println("  -> 加 --debug 看栈")
         ExitCode.ASSERT_FAILED
+    } finally {
+        // 世界地图改为内存即时更新 + 出口统一落盘：这里不刷就会丢本步学到的内容
+        runCatching { ohd.core.actions.WorldMap.flushAll() }
     }
     exitProcess(code)
 }

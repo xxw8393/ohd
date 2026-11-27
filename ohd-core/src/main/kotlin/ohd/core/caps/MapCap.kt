@@ -29,15 +29,18 @@ class MapCap : Capability {
         ohd map path --to <地标> [--bundle <包名>]
         ohd map export [--out <文件.json>] [--bundle <包名>]
         ohd map clear [--bundle <包名>]
+        ohd map clear-crashes [--bundle <包名>]
+        ohd map prune [--max-pages N] [--bundle <包名>]
+        ohd map clean [--bundle <包名>]
         ohd map go --to <地标> [--bundle <包名>] [--dry-run]
     """.trimIndent()
     override val example = "ohd map path --to \"GPU Texture\" --bundle com.tencent.compose"
-    override val accepts: Set<String> = setOf("bundle", "dry-run", "out", "to")
+    override val accepts: Set<String> = setOf("bundle", "dry-run", "out", "to", "max-pages")
 
     override fun run(ctx: RunContext): Int {
         val started = System.currentTimeMillis()
         val sub = ctx.options.positionals.firstOrNull()?.lowercase()
-            ?: throw OhdError(ExitCode.USAGE, "需要子命令 show|path|export|clear|go", usage)
+            ?: throw OhdError(ExitCode.USAGE, "需要子命令 show|path|export|clear|clear-crashes|prune|clean|go", usage)
         val bundle = ctx.options.str("bundle")
             ?: System.getenv("OHD_BUNDLE")
             ?: "com.tencent.compose"
@@ -49,6 +52,25 @@ class MapCap : Capability {
             "clear" -> {
                 WorldMap.clear(bundle)
                 ctx.out.info("已清空世界地图：$bundle（${WorldMap.pathFor(bundle)}）")
+                ExitCode.OK
+            }
+            "clean" -> {
+                val (before, after) = WorldMap.cleanAndSave(bundle)
+                ctx.out.info(
+                    "已清洗世界地图：$before → $after 页（合并内容相同的重复快照、剔除手势噪声）" +
+                        "\n  ${WorldMap.pathFor(bundle)}",
+                )
+                ExitCode.OK
+            }
+            "prune" -> {
+                val (before, after) = WorldMap.pruneAndSave(bundle, ctx.options.int("max-pages", WorldMap.MAX_PAGES))
+                ctx.out.info("已瘦身世界地图：$before → $after 页（${WorldMap.pathFor(bundle)}）")
+                ExitCode.OK
+            }
+            "clear-crashes" -> {
+                val n = WorldMap.load(bundle).crashes.size
+                WorldMap.clearCrashes(bundle)
+                ctx.out.info("已清除 $n 条 crash 禁令：$bundle")
                 ExitCode.OK
             }
             "go" -> goPlan(ctx, bundle, started)
@@ -66,6 +88,7 @@ class MapCap : Capability {
                     put("bundle", doc.bundle)
                     put("pages", doc.pages.size)
                     put("edges", doc.edges.size)
+                    put("crashes", doc.crashes.size)
                     put("currentPageId", doc.currentPageId ?: "")
                     put("file", WorldMap.pathFor(bundle).toString())
                     put("summary", WorldMap.humanSummary(doc))
@@ -175,7 +198,7 @@ class MapCap : Capability {
                 "swipe" -> {
                     val n = (s.swipes ?: 1).coerceAtMost(3).coerceAtLeast(1)
                     repeat(n) { i ->
-                        val flat = DeviceOps.captureLayout(hdc, null).flat()
+                        val flat = DeviceOps.captureLayout(hdc, null, bundle = bundle).flat()
                         UiReady.assertInApp(hdc, bundle, flat)
                         val action = UiNav.scrollPageAction("up", UiNav.contentSafeRect(flat))
                         UiActions.perform(hdc, action, 10_000)
@@ -189,7 +212,7 @@ class MapCap : Capability {
             }
         }
         val label = tapLabel ?: to
-        val flat = DeviceOps.captureLayout(hdc, null).flat().let { UiReady.assertNotLockOrUnlock(hdc, it) }
+        val flat = DeviceOps.captureLayout(hdc, null, bundle = bundle).flat().let { UiReady.assertNotLockOrUnlock(hdc, it) }
         LayoutCache.put(hdc, flat)
         WorldMap.observePage(bundle, flat)
         when (val r = UiNav.resolve(flat, label, clickableOnly = true)) {

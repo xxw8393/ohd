@@ -98,7 +98,6 @@ class CloseoutTest {
 
     @Test
     fun watchdogStopsWriterWhenFileReachesCapAndReapsChildren() {
-        if (System.getProperty("os.name").lowercase().contains("win")) return
         // 管道上的 sh 会把 echo 缓冲到脚本结束，读 pid 会卡住；python 显式 flush。
         val parent = ProcessBuilder(
             "python3", "-c",

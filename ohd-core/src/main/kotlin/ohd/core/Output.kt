@@ -154,7 +154,26 @@ class Options(
     val positionals: List<String> = emptyList(),
 ) {
     fun str(name: String, default: String? = null): String? = values[name] ?: default
-    fun bool(name: String): Boolean = name in flags || values[name].equals("true", ignoreCase = true)
+
+    /**
+     * 开关取值。
+     *
+     * 三态语义（缺一不可，否则「默认开启」的选项没办法关掉）：
+     * - `--name`             → true
+     * - `--name=false`       → false
+     * - `--no-name`          → false（否定式，[default] 为 true 时必需）
+     * - 都没给               → [default]
+     *
+     * 兼容：已有代码直接查 `bool("no-worldmap")` 这类**本身就是否定名**的开关，
+     * 此时名字在 flags 里就返回 true，语义与旧实现一致。
+     */
+    fun bool(name: String, default: Boolean = false): Boolean {
+        if (name in flags) return true
+        // 仅当调用方查的是肯定名时，才认 --no-<name> 作否定
+        if (!name.startsWith("no-") && ("no-$name" in flags || "no-$name" in values)) return false
+        values[name]?.let { return it.equals("true", ignoreCase = true) }
+        return default
+    }
     /**
      * 严格整数：非法值直接报错，不静默回退默认值。
      * 静默回退会让「--depth abc」看起来生效了其实用的是默认值，测试以为是工具的问题。

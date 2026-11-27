@@ -19,14 +19,12 @@ if /i "%ARCH%"=="ARM64" set "ARCH=arm64"
 if /i "%ARCH%"=="X86" set "ARCH=x86"
 set "PLATFORM=windows-%ARCH%"
 
-if /i "%~1"=="--skip-build" goto :after_build
 echo [1/4] 构建
 call "%SELF%build.bat"
 if errorlevel 1 (
   echo build 失败，先解决构建 1>&2
   exit /b 1
 )
-:after_build
 
 echo [2/4] 生成精简运行时（jlink）
 where jlink >nul 2>nul

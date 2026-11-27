@@ -49,12 +49,13 @@ class MonkeyCap : Capability {
     override val summary = "随机事件注入：崩溃时自动生成可回放脚本 + 现场"
     override val usage = "ohd monkey [--bundle b] [--duration 10m] [--interval 400ms] [--seed N] " +
         "[--max-steps N|0] [--layout-ttl 5] [--batch 1] [--stagnate 60] [--check-every 8] [--no-stay-in-app] [--sample-every 20] " +
-        "[--keep-a11y] [--a11y-ping-every 10] [--no-worldmap] " +
+        "[--no-keep-a11y] [--a11y-ping-every 10] [--no-worldmap] " +
         "[--home-settle 30s] [--no-home-settle] [--home-text a,b] [--no-hilog] [--tag <tag>] [--match RE] [--exclude RE] [--full] [--max-size 0] [--out <file.ohd>] [--json]"
-    override val example = "ohd monkey --bundle com.tencent.compose --duration 10h --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 --keep-a11y --keep-going --tag Konan_main --exclude '(?i)vsync'"
+    override val example = "ohd monkey --bundle com.tencent.compose --duration 10h --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 --keep-going --tag Konan_main --exclude '(?i)vsync'"
     override val accepts = setOf(
         "batch", "bundle", "check-every", "duration", "interval", "layout-ttl", "max-steps", "keep-going", "no-stay-in-app",
-        "keep-a11y", "a11y-ping-every", "no-worldmap",
+        "keep-a11y", "no-keep-a11y", "a11y-ping-every", "no-worldmap",
+
         "home-settle", "no-home-settle", "home-text",
         "hilog", "no-hilog", "tag", "match", "exclude", "full", "max-size", "out", "sample-every", "seed", "stagnate", "no-compress", "log-compress",
     )
@@ -144,8 +145,10 @@ class MonkeyCap : Capability {
         val sampleEvery = ctx.options.int("sample-every", 20).coerceAtLeast(1)
         val seed = ctx.options.str("seed")?.toLongOrNull() ?: System.currentTimeMillis()
         val rnd = Random(seed)
-        // DevEco Testing parity: keep uitest+accessibility client so app a11y stays enabled.
-        val keepA11y = ctx.options.bool("keep-a11y") && hdc.kind == DeviceKind.OHOS
+        // OHOS default ON (DevEco parity): uitest+accessibility so Compose a11y hot path stays open.
+        // Opt out with --no-keep-a11y. Bare --keep-a11y remains accepted (no-op when already default).
+        val keepA11y =
+            hdc.kind == DeviceKind.OHOS && !ctx.options.bool("no-keep-a11y")
         val a11yPingEvery = ctx.options.int("a11y-ping-every", 10).coerceAtLeast(1)
         var a11yPings = 0
         var a11yPingFail = 0
