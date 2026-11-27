@@ -24,6 +24,23 @@ object MonkeyPolicy {
     }
 
     /**
+     * `--avoid-text a,b`：text / description 含任一子串则不当作可点目标。
+     * 大小写不敏感；空列表恒 false。
+     */
+    fun matchesAvoidText(text: String?, description: String?, avoid: List<String>): Boolean {
+        if (avoid.isEmpty()) return false
+        val hay = buildString {
+            if (!text.isNullOrBlank()) append(text).append('\n')
+            if (!description.isNullOrBlank()) append(description)
+        }
+        if (hay.isEmpty()) return false
+        return avoid.any { a -> hay.contains(a, ignoreCase = true) }
+    }
+
+    fun matchesAvoidText(node: ohd.core.parsers.LayoutNode, avoid: List<String>): Boolean =
+        matchesAvoidText(node.text, node.description, avoid)
+
+    /**
      * 这条动作可能把前台切走，它应该是本批的最后一条。
      * 动作本身仍会发出：Home、Back，以及从底部向上滑（Home/最近任务手势）。
      */

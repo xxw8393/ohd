@@ -28,8 +28,7 @@ import ohd.core.isoTime
 import ohd.core.parsers.AndroidParser
 import ohd.core.parsers.DmabufParser
 import ohd.core.parsers.MemParser
-import java.nio.file.Files
-import java.nio.file.Paths
+import ohd.platform.fs
 import kotlin.random.Random
 
 /**
@@ -49,12 +48,12 @@ class MonkeyCap : Capability {
     override val summary = "随机事件注入：崩溃时自动生成可回放脚本 + 现场"
     override val usage = "ohd monkey [--bundle b] [--duration 10m] [--interval 400ms] [--seed N] " +
         "[--max-steps N|0] [--layout-ttl 5] [--batch 1] [--stagnate 60] [--check-every 8] [--no-stay-in-app] [--sample-every 20] " +
-        "[--no-keep-a11y] [--a11y-ping-every 10] [--no-worldmap] " +
+        "[--no-keep-a11y] [--a11y-ping-every 10] [--no-worldmap] [--avoid-text a,b] " +
         "[--home-settle 30s] [--no-home-settle] [--home-text a,b] [--no-hilog] [--tag <tag>] [--match RE] [--exclude RE] [--full] [--max-size 0] [--out <file.ohd>] [--json]"
-    override val example = "ohd monkey --bundle com.tencent.compose --duration 10h --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 --keep-going --tag Konan_main --exclude '(?i)vsync'"
+    override val example = "ohd monkey --bundle com.tencent.compose --duration 10h --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 --keep-going --avoid-text OHOS运行时开关 --tag Konan_main --exclude '(?i)vsync'"
     override val accepts = setOf(
         "batch", "bundle", "check-every", "duration", "interval", "layout-ttl", "max-steps", "keep-going", "no-stay-in-app",
-        "keep-a11y", "no-keep-a11y", "a11y-ping-every", "no-worldmap",
+        "keep-a11y", "no-keep-a11y", "a11y-ping-every", "no-worldmap", "avoid-text",
 
         "home-settle", "no-home-settle", "home-text",
         "hilog", "no-hilog", "tag", "match", "exclude", "full", "max-size", "out", "sample-every", "seed", "stagnate", "no-compress", "log-compress",
@@ -137,6 +136,16 @@ class MonkeyCap : Capability {
         val stayInApp = !ctx.options.bool("no-stay-in-app") && bundle != null
         // 默认读+写世界地图：dump 累积，停滞/挑点时用 edges+item 滑次导航；--no-worldmap 关闭
         val worldMapOn = !ctx.options.bool("no-worldmap") && !bundle.isNullOrBlank()
+        // 逗号分隔：可点节点 text/description/label 含子串则跳过（如「OHOS运行时开关」）。
+        // 挡不住盲点；硬隔离请 `-Pohos.showRuntimeTuning=false`（入口可见不可点，地图不变）。
+        val avoidTexts = ctx.options.str("avoid-text")
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+        if (avoidTexts.isNotEmpty()) {
+            ctx.out.note("AVOID_TEXT", "info", "跳过可点: ${avoidTexts.joinToString(" | ")}")
+        }
         val mainAbility = runCatching {
             hdc.shell("bm dump -n $bundle", 10_000).stdout
                 .lineSequence().firstOrNull { it.contains("EntryAbility") }
@@ -390,7 +399,8 @@ class MonkeyCap : Capability {
                     it.clickable && it.enabled && it.visible && b != null &&
                         b.width > 0 && b.height > 0 &&
                         b.top >= safeTop && b.bottom <= safeBottom &&
-                        MonkeyPolicy.belongsToTarget(it.bundleName, target)
+                        MonkeyPolicy.belongsToTarget(it.bundleName, target) &&
+                        !MonkeyPolicy.matchesAvoidText(it, avoidTexts)
                 }
                 // 指纹只看「有多少个可点、大致在什么位置」，与文本变化无关
                 val fp = fresh.size * 1_000_003 + fresh.sumOf { (it.bounds?.centerX ?: 0) + (it.bounds?.centerY ?: 0) }

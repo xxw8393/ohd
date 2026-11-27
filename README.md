@@ -85,6 +85,7 @@ dist\build.bat             # 只构建（Windows）
 ohd install /path/app-signed.hap                       # 覆盖安装；--keep-data 保留应用数据
 ohd monkey --bundle com.tencent.compose --duration 10h --keep-going \
   --interval 0 --batch 10 --sample-every 20 --layout-ttl 20 \
+  --avoid-text OHOS运行时开关 \
   --tag Konan_main --exclude '(?i)vsync'
 
 # OHOS 默认已 keep-a11y（uitest daemon + dump ping，对齐 DevEco）
@@ -103,6 +104,7 @@ ohd monkey --bundle com.tencent.compose --duration 2h --keep-going \
 | `--keep-going` | 崩溃后继续跑满时长（不加以首次崩溃结束，10h 长跑必加） |
 | （默认）keep-a11y | OHOS **默认开**：保活 uitest + accessibility dump；`--no-keep-a11y` 关掉 |
 | `--layout-ttl 20` | 布局抓取间隔上限，产物减半（约 250 MB / 10h） |
+| `--avoid-text a,b` | 可点节点 text/description 含子串则跳过（例：`OHOS运行时开关`）。挡不住盲点；硬隔离请打 `-Pohos.showRuntimeTuning=false`（入口仍可见、不可点，地图不变） |
 
 注意：10 h 必须脱管启动（`Popen(..., start_new_session=True)`），否则终端/IDE 退出会带走压测。
 并行内存采样可用扩展：`ohd --ext-timeout 0 --ext-mem 0 ohos_automation_scene_capture --bundle … --out-dir …`。
