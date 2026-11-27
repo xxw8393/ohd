@@ -1,8 +1,14 @@
 # ohd — 移动端真机能力工具箱
 
+中文 | [English](README.en.md)
+
 把「操作真机 / 取证 / 性能观测」收敛为一个跨平台 CLI：默认给人读的紧凑输出，`--json` 给 agent 消费，产物统一归档并带 manifest。
 
 平台：**OHOS**（hdc）/ **Android**（adb）/ **iOS**（simctl 模拟器、devicectl 真机、idb 触摸注入）。`--platform` 可显式指定，默认自动探测。
+
+**双运行时**：Kotlin Multiplatform 编译，同一份代码出两种产物——原生可执行（启动约 6ms）
+与 JVM 版（约 42ms，含 CDS）。`dist/ohd` 优先用原生，找不到自动回退 JVM。
+原生版仅三项图像能力降级（见「运行时选择」）。
 
 设计文档：[`DESIGN.md`](DESIGN.md)（含能力清单、证据包规范、跨端细则、里程碑）。
 给 AI 承接用的精简上下文：[`LLM_CONTEXT.md`](LLM_CONTEXT.md)（新会话先读这份，按需再查 DESIGN）。
@@ -34,6 +40,29 @@ dist\build.bat             # 只构建（Windows）
 
 产物：`ohd-cli/build/install/ohd/bin/ohd`。若机器上已有 `~/.gradle/wrapper/dists` 下的 Gradle 发行版，`build.sh` 会直接复用，无需另装。
 
+### 原生可执行（可选，更快）
+
+```bash
+./dist/package-native.sh          # 打原生包（单文件，零运行时依赖，约 1.7MB 压缩）
+./dist/install-native.sh          # 装成 <prefix>/bin/ohd 软链，拿到完整启动优势
+```
+
+注意 `dist/ohd` 是 bash 脚本，**光 bash 自身启动就要 6ms**，而二进制总共 6ms。
+要拿到全部优势必须用 `install-native.sh` 装软链（实测 5.8ms vs 脚本 12.5ms）。
+
+### 运行时选择
+
+两个环境变量控制：
+
+| 变量 | 作用 |
+|---|---|
+| `OHD_FORCE_JVM=1` | 强制走 JVM（对比性能、或排查「原生特有」问题） |
+| `OHD_NATIVE_TARGET=linuxX64` | 指定原生 target（默认按 `uname` 推断） |
+
+原生版相对 JVM 版**仅三项降级**，且都明确报错而非产出坏图：
+图像标注图（`shot --grid/--boxes`）、GIF 合成（`video`/`bundle` 的 replay.gif）、
+视频帧解码（`video` 内嵌帧）。其余功能完全等价。需要这三项请用 JVM 版。
+
 ## 快速验证
 
 ```bash
@@ -58,7 +87,7 @@ dist\build.bat             # 只构建（Windows）
 | 扩展 | `ext`（列出/管理脚本扩展；`ohd <命令>` 直接命中 `.ohd/extensions/<命令>.{sh,py,java,bat}`，见下节） |
 | 交付 | `bundle`（ohd-case/1；默认近 2h；`--report`/`--zip`/`--latest-only`；缺件 exit 4）、`analyze`、`triage`（automation REPORT→调查赛道；`--reverify` 调 dmabuf/mem）、`path`（hilog→.ohd）、`report`、`repro`、`soak`、`monkey`、`monitor`、`salvage`、`summary` |
 
-解析器全部基于真机取样（fixture 在 `ohd-core/src/test/resources/fixtures/`），不是按文档推测的格式。
+解析器全部基于真机取样（fixture 在 `ohd-core/src/jvmTest/resources/fixtures/`），不是按文档推测的格式。
 
 ### 平台覆盖
 
