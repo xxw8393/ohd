@@ -11,7 +11,7 @@ import kotlinx.serialization.json.put
 import ohd.platform.Stdio
 
 /** 工具版本：JSON 信封要带它，否则产物无法回溯是哪个版本生成的 */
-const val TOOL_VERSION = "0.1.0"
+const val TOOL_VERSION = "0.2.0"
 
 /**
  * 时间点统一输出 ISO-8601（人类可读、可排序、无损时区）。

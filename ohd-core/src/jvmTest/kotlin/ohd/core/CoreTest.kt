@@ -53,18 +53,20 @@ class SessionTest {
     fun recordScriptNamesDeviceAndDoesNotCollide() {
         val cwd = fs.createTempDirectory("ohd-rec")
         try {
-            // 2026-10-19T15:33:00+08:00 的 epoch 毫秒；固定值让断言不受本机时区影响
+            // 固定 epoch 让断言可复现；但 recordScript 用的是**本地时区**格式化，
+            // 期望值必须按同一语义推导，写死 20261019-153300 只在 +08:00 机器上成立。
             val ts = 1_792_395_180_000L
+            val stamp = ohd.platform.TimeFmt.format(ts, "yyyyMMdd-HHmmss")
             val p = Session.recordScript("63R0226113004249", cwd, ts)
             assertEquals(
-                cwd.resolve("ohd-evidence/record/record-63R0226113004249-20261019-153300.ohd"),
+                cwd.resolve("ohd-evidence/record/record-63R0226113004249-$stamp.ohd"),
                 p,
             )
             p.parent?.let { fs.createDirectories(it) }
             fs.writeString(p, "x")
             val q = Session.recordScript("63R0226113004249", cwd, ts)
             assertEquals(
-                cwd.resolve("ohd-evidence/record/record-63R0226113004249-20261019-153300-2.ohd"),
+                cwd.resolve("ohd-evidence/record/record-63R0226113004249-$stamp-2.ohd"),
                 q,
             )
             assertTrue(Session.recordScript("a/b:c", cwd, ts).fileName?.toString().orEmpty().startsWith("record-a_b_c-"))
@@ -136,16 +138,21 @@ class PlatformTest {
 
 class EnvDiscoveryTest {
 
+    private val sep = java.io.File.separator
+
     @Test
     fun explicitHdcWins() {
-        val env = Env(explicitHdc = "/opt/fake/hdc", sysenv = { null })
-        assertEquals(OhdPath.of("/opt/fake/hdc"), env.hdc.path)
+        // 绝对路径要按宿主拼：Windows 上 "/opt/fake/hdc" 不是绝对路径
+        val p = if (sep == "\\") "C:\\opt\\fake\\hdc" else "/opt/fake/hdc"
+        val env = Env(explicitHdc = p, sysenv = { null })
+        assertEquals(OhdPath.of(p), env.hdc.path)
     }
 
     @Test
     fun envVariableUsedWhenNoArgument() {
-        val env = Env(sysenv = { name -> if (name == "OHD_HDC") "/env/hdc" else null })
-        assertEquals(OhdPath.of("/env/hdc"), env.hdc.path)
+        val p = if (sep == "\\") "C:\\env\\hdc" else "/env/hdc"
+        val env = Env(sysenv = { name -> if (name == "OHD_HDC") p else null })
+        assertEquals(OhdPath.of(p), env.hdc.path)
     }
 
     @Test
@@ -155,13 +162,18 @@ class EnvDiscoveryTest {
             for (v in listOf("9", "20", "12")) {
                 val dir = tmp.resolve(v).resolve("toolchains")
                 fs.createDirectories(dir)
-                val hdc = dir.resolve("hdc")
+                // 产品在 Windows 上找的是 hdc.exe（Env.hdc 用 Platform.exeSuffix），
+                // 只造 "hdc" 会让这条用例在 Windows 上永远找不到候选。
+                val hdc = dir.resolve("hdc" + Platform.exeSuffix)
                 fs.writeString(hdc, "#!/bin/sh\nexit 0\n")
                 hdc.toJavaPath().toFile().setExecutable(true)
             }
             val env = Env(sysenv = { name -> if (name == "OHOS_SDK_HOME") tmp.toString() else null })
             val path = env.hdc.path
-            assertTrue(path != null && path.toString().contains("/20/"), "应选版本号最大的 SDK：$path")
+            assertTrue(
+                path != null && path.toString().contains("${sep}20${sep}"),
+                "应选版本号最大的 SDK：$path",
+            )
         } finally {
             fs.deleteRecursively(tmp)
         }

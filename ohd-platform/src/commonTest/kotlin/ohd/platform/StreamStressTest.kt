@@ -40,7 +40,7 @@ class StreamStressTest {
     @Test
     fun manyLinesAllArriveInOrder() {
         // seq 1..500：丢行/乱序都会被抓到
-        val lines = collect(listOf("/bin/sh", "-c", "seq 1 500"))
+        val lines = collect(TestCommand.sequence(500))
         assertEquals(500, lines.size, "应收到 500 行，实际 ${lines.size}；首尾=${lines.firstOrNull()}..${lines.lastOrNull()}")
         assertEquals("1", lines.first())
         assertEquals("500", lines.last())
@@ -50,9 +50,7 @@ class StreamStressTest {
     fun longLineCrossingBufferBoundary() {
         // 造一行远大于 64KB 缓冲的输出：必须被正确拼接成一行，而不是碎成多行
         val len = 200_000
-        val lines = collect(
-            listOf("/bin/sh", "-c", "awk 'BEGIN{ s=\"\"; for(i=0;i<$len;i++) s=s \"x\"; print s }'"),
-        )
+        val lines = collect(TestCommand.longLine(len))
         assertEquals(1, lines.size, "超长行应拼成 1 行，实际 ${lines.size} 行")
         assertEquals(len, lines[0].length, "超长行长度应为 $len")
     }
@@ -60,21 +58,21 @@ class StreamStressTest {
     @Test
     fun trailingLineWithoutNewlineIsFlushed() {
         // printf 不带换行：退出时最后一行也必须吐出来
-        val lines = collect(listOf("/bin/sh", "-c", "printf 'no-newline-tail'"))
+        val lines = collect(TestCommand.noNewlineTail("no-newline-tail"))
         assertEquals(listOf("no-newline-tail"), lines, "无换行尾巴应被 flush")
     }
 
     @Test
     fun stderrIsMergedIntoStream() {
         // hilog 的诊断信息走 stderr，丢了会漏行
-        val lines = collect(listOf("/bin/sh", "-c", "echo out-line; echo err-line 1>&2"))
+        val lines = collect(TestCommand.stdoutAndStderr("out-line", "err-line"))
         assertTrue(lines.contains("out-line"), "应收到 stdout 行：$lines")
         assertTrue(lines.contains("err-line"), "stderr 应并入，实际：$lines")
     }
 
     @Test
     fun blankLinesAreSkipped() {
-        val lines = collect(listOf("/bin/sh", "-c", "printf 'a\\n\\n\\nb\\n'"))
+        val lines = collect(TestCommand.blankLines())
         assertEquals(listOf("a", "b"), lines, "空行应被跳过")
     }
 }

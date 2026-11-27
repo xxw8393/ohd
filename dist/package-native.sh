@@ -10,8 +10,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="$(grep -m1 -E '^[[:space:]]*version *=' build.gradle.kts 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' || echo 0.1.0)"
-VERSION="${VERSION:-0.1.0}"
+VERSION="$(grep -m1 -E '^[[:space:]]*version *=' build.gradle.kts 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' || echo 0.2.0)"
+VERSION="${VERSION:-0.2.0}"
 
 # TARGET 是 K/N 的 target 名，GTASK 是对应的 Gradle 任务后缀（首字母大写，显式映射避免 sed \U 的 BSD/GNU 差异）
 case "$(uname -s)" in
@@ -25,10 +25,20 @@ if [ -z "$GRADLE_BIN" ]; then
   if command -v gradle >/dev/null 2>&1; then
     GRADLE_BIN="$(command -v gradle)"
   else
-    echo "找不到 gradle，请设置 GRADLE" >&2
-    exit 1
+    # 与 dist/build.sh 一致：复用机器上已下载的 Gradle 发行版，优先 8.x
+    # （Kotlin 2.2 尚未适配 Gradle 9）。
+    CANDIDATES="$(find "$HOME/.gradle/wrapper/dists" -maxdepth 6 -type f -path "*/bin/gradle" 2>/dev/null)"
+    GRADLE_BIN="$(printf '%s\n' "$CANDIDATES" | grep -E '/gradle-8\.[0-9]+(\.[0-9]+)?/bin/gradle$' | sort -V | tail -1)"
+    [ -n "$GRADLE_BIN" ] || GRADLE_BIN="$(printf '%s\n' "$CANDIDATES" | sort -V | tail -1)"
   fi
 fi
+
+if [ -z "$GRADLE_BIN" ] || [ ! -x "$GRADLE_BIN" ]; then
+  echo "找不到 gradle：请安装 gradle，或设 GRADLE=/path/to/gradle" >&2
+  exit 1
+fi
+
+echo "使用 gradle: $GRADLE_BIN"
 
 echo "==> 构建原生可执行（release）"
 "$GRADLE_BIN" -p . --no-daemon ":ohd-cli:linkReleaseExecutable${GTASK}"

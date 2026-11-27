@@ -51,6 +51,11 @@ class OhdPath private constructor(private val raw: String) : Comparable<OhdPath>
             return when {
                 cut < 0 -> null
                 cut == 0 -> if (n.length > 1) OhdPath(PlatformFs.sep) else null
+                // Windows 盘符根 `C:\a` 的父级是 `C:\` 而不是 `C:`：
+                // `C:` 是「当前盘当前目录」这个相对概念，拿去 resolve 会跑偏。
+                // 只有 `C:\` 这种「盘符 + 一个分隔符」才是自身（根不能再上跳）。
+                cut == 2 && PlatformFs.sep == "\\" && n[1] == ':' ->
+                    if (n.length > 3) OhdPath(n.substring(0, 3)) else null
                 else -> OhdPath(n.substring(0, cut))
             }
         }

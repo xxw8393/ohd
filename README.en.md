@@ -9,7 +9,7 @@ Platforms: **OHOS** (hdc) / **Android** (adb) / **iOS** (simctl for simulators, 
 idb for touch injection). Use `--platform` to force one; auto-detected by default.
 
 **Dual runtime**: built with Kotlin Multiplatform — one codebase, two artifacts: a native executable
-(~6 ms startup) and a JVM build (~42 ms with CDS). `dist/ohd` prefers native and falls back to JVM.
+(~6 ms startup) and a JVM build (~51 ms with CDS). `dist/ohd` prefers native and falls back to JVM.
 The native build degrades only three image capabilities (see "Choosing a runtime").
 
 Design docs: [`DESIGN.md`](DESIGN.md) (capability list, evidence-pack spec, cross-platform details, milestones).

@@ -28,7 +28,7 @@ jobs:
           gradle-version: 8.13
 
       - name: Run tests & installDist
-        run: gradle test installDist
+        run: gradle jvmTest installDist
 
       - name: Run selftest (Unix)
         if: runner.os != 'Windows'

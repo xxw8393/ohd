@@ -10,6 +10,8 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.condition.OS
+import org.junit.jupiter.api.condition.DisabledOnOs
 
 /**
  * 前台查询 5s 节流的真实行为。
@@ -21,6 +23,10 @@ import kotlin.test.assertTrue
  * 背景：真实 `aa dump -a` 设备侧 134–229ms，一次 `go` 会查 2–4 次，
  * 节流把 5s 内的重复查询收敛成一次。
  */
+// 本类所有用例都靠「假 hdc 脚本 + chmod 执行位」驱动真实调用链，
+// 而 Windows 没有 POSIX 执行位（setPosixFilePermissions 抛 UnsupportedOperationException），
+// 无法造出可执行脚本，故整类在 Windows 上跳过。
+@DisabledOnOs(OS.WINDOWS)
 class UiReadyForegroundCacheTest {
 
     private val bundle = "com.example.target"

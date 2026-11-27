@@ -6081,3 +6081,104 @@ iOS 只有 Home 一个硬件键，`args[0].toInt()` 对 "Back" 直接抛异常�
 
 `README.md` 原为纯 OHOS 口径（标题「OHOS 真机能力工具箱」、前置依赖无 Xcode/idb），
 已补：跨平台标题、iOS 可选依赖、**平台覆盖矩阵**一节。DESIGN 侧按 append-only 只追加本节。
+
+---
+
+## 99. 更正 §(snapshot_display 格式)：`-t` 能出 PNG，且 PNG 才是 diff 该用的格式
+
+**本节锚定**：2026-11-27，仓库 `github-ohd`，分支 `main` @ `e4e6335`（工作树脏），
+真机 `63R0226113004249` / `SGT-AL50` / API 24 / `6.1.0.135(SP8C00E120R3P11)`。
+
+### 99.1 前文那条结论是错的
+
+上文平台覆盖表里有这么一行：
+
+> | `snapshot_display -f` | 可用 `.png` | **只接受 `.jpeg`**：`error: fileName ... invalid, suffix must be .jpeg` | `ShotCap` 固定 `.jpeg`；标注另存 `.png` |
+
+**「只接受 .jpeg」不成立。** 当初只试了不带 `-t` 的调用，而 `-t` 的**默认值就是 `jpeg`**，
+所以后缀自然被要求 `.jpeg`。真实语义是：**后缀约束跟着 `-t` 走**，不是只支持 jpeg。
+
+原文保留（append-only），以本节为准。
+
+### 99.2 真机实测（2026-11-27，API 24）
+
+```
+$ snapshot_display -t png  -f /data/local/tmp/ohd/t1.png
+fileType: png
+process: display 0, file type: png, width: 1280, height: 2832
+success: ... write to /data/local/tmp/ohd/t1.png as png, width: 1280, height: 2832
+
+$ file t1.png
+t1.png: PNG image data, 1280 x 2832, 8-bit/color RGBA, non-interlaced
+```
+
+魔数 `89 50 4e 47 0d 0a 1a 0a`，是**真 PNG**，不是改过名的 JPEG。
+
+四种组合的实测结果：
+
+| 命令 | 结果 |
+|---|---|
+| `snapshot_display -f x.png`（不带 `-t`） | ❌ `suffix must be .jpeg` ← 当初踩的就是这个 |
+| `snapshot_display -t png -f x.png` | ✅ 真 PNG（RGBA non-interlaced） |
+| `snapshot_display -t png -f x.jpeg` | ❌ `suffix must be .png` |
+| `snapshot_display -t jpeg -f x.jpeg` | ✅ JPEG（`ff d8 ff e0`） |
+
+### 99.3 代价（1280×2832，各 3 次）
+
+| 格式 | 截图耗时 | 体积 |
+|---|---|---|
+| jpeg | 0.26–0.37 s | 181 KB |
+| png | 0.63–0.71 s | 1.38 MB（约 8×） |
+
+所以**不全局切 PNG**：`video` 循环切 PNG 会从约 2fps 掉到约 1.5fps、单批 8 帧体积涨 8 倍。
+
+### 99.4 但 diff 必须用 PNG——不只是「能替代」，是更正确
+
+`ImageIOEngine.diff()` 是 `abs(a-b) > threshold` 逐像素比较，`highFrequencyEnergy()`
+是 3×3 拉普拉斯。**JPEG 的块效应与振铃会在平坦区域伪造高频能量**，
+直接污染 `--text-presence` 的 HF 判据与 `changedRatio`。用 JPEG 当 diff 基线，
+等于在有损噪声上做阈值判断。
+
+按用途分流（已落地）：
+
+| 用途 | 格式 | 落点 |
+|---|---|---|
+| `diff` / `shot --grid --boxes` | PNG | `DeviceOps.snapshot(format = PNG)` |
+| `video` / `bundle --gif` / `replay` 截帧 | JPEG | `VideoCap.probeFrame` 显式 jpeg |
+
+### 99.5 落地改动
+
+- `DeviceOps.ShotFormat` 枚举（`PNG("png","png")` / `JPEG("jpeg","jpeg")`），
+  `snapshot(hdc, session, displayId, format = PNG)`，命令拼 `-t <type>`。
+  错误提示也换成「后缀须与 `-t` 一致」，不再误导成「只支持 jpeg」。
+- `DiffCap` 取 PNG；`ShotCap` 默认 PNG，`--out *.jpg` 时真转码。
+- **顺手修掉一个静默失败 bug**：`ImageIO.write(rgbaImg, "jpeg", f)` 对**带 alpha 的图返回
+  `false` 而不是抛异常**（实测 `type=6 alpha=true → returned false, exists=false`）。
+  原代码忽略返回值，导致 `ohd shot --out x.jpg` **报告成功但文件根本没落盘**。
+  修法：先 `TYPE_INT_RGB` + 白底拍平 alpha，再检查返回值，失败则明确报错。
+
+### 99.6 连带结论：diff 链路可以离开 JVM
+
+之前 `docs/superpowers/plans/2026-11-27-kotlin-native-jvm-split.md` 把「JPEG 解码」
+列为「唯一真难的地方」并据此把 image 归为永久留 JVM。**这个前提错了**，因此结论要改：
+
+- `diff()` / `highFrequencyEnergy()` 本来就是纯 Kotlin（已抽到 `PixelAlgorithms`，零 JDK）
+- 唯一绑 JDK 的是「解码」。而设备产物就是 **8-bit RGBA 非隔行 PNG**，
+  这个剖面自己解很轻：unfilter（5 种）+ zlib inflate
+
+已实现并验证：
+
+- `ohd-platform/PngDecode.kt`（commonMain）：只认 8-bit / 非隔行 / 颜色类型 6·2·0·4；
+  不满足返回 null 由调用方回退，**不猜着解**。
+- `Fs.inflateRaw(ByteArray): ByteArray?`：JVM 用 `Inflater`，K/N 复用已有
+  `gunzipAppend`（`inflateInit2_(47)` 自动识别 gzip 与**裸 zlib**，PNG 的 IDAT 是后者）。
+- `ImageEngine.load` 签名由 `java.nio.file.Path` 改为 `OhdPath`；`ohd-image` 加
+  `api(project(":ohd-platform"))`。`ImageIOEngine.load` 先走 `PngDecode`，失败才回退 ImageIO
+  （老证据包里的 JPEG 基线仍要比）。
+- `PngDecodeTest` 以 ImageIO 为对照组验**逐像素一致**；含覆盖全部 5 种行 filter 的梯度图。
+  灰度 PNG 只验几何与中性灰，不逐像素比——`TYPE_BYTE_GRAY` 经 ImageIO 写→读本身有损
+  （实测原值 20/40 读回都成 0），拿它当基准会把自己的解码 bug 误判掉。
+
+**当前边界**：`ohd-image` 仍是 JVM 模块（编码/标注仍用 AWT），但**解码这一环已可跨平台**。
+`OhdPath` 侧 native 编译已通过；把 image 整体搬 K/N 还需处理 PNG 编码（差异热力图）与
+GIF 编码，那是独立一段活。

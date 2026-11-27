@@ -9,6 +9,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import kotlin.test.assertTrue
 
 class CloseoutTest {
@@ -97,6 +99,9 @@ class CloseoutTest {
     }
 
     @Test
+    // 用 python3 起「子进程 + 等待」来验看守进程收不收进程树，Windows runner 无 python3；
+    // 该逻辑跨平台，但缺 POSIX 进程语义的宿主上无法构造现场，跳过。
+    @DisabledOnOs(OS.WINDOWS)
     fun watchdogStopsWriterWhenFileReachesCapAndReapsChildren() {
         // 管道上的 sh 会把 echo 缓冲到脚本结束，读 pid 会卡住；python 显式 flush。
         val parent = ProcessBuilder(
@@ -136,7 +141,13 @@ class CloseoutTest {
                 Thread.sleep(200)
             }
             assertFalse(ProcessTrees.alive(proc.pid()), "独立看守未在上限处停掉写入进程")
-            assertTrue(fs.exists(LogWatchdog.marker(file)))
+            // 看守进程是「先收进程树、再写 marker」：kill 内部的等待最长可达 800ms×2，
+            // 目标进程一消失就断言 marker 存在会踩竞态（CI 慢机器上必现），这里等它写完。
+            val markerDeadline = System.currentTimeMillis() + 15_000
+            while (System.currentTimeMillis() < markerDeadline && !fs.exists(LogWatchdog.marker(file))) {
+                Thread.sleep(100)
+            }
+            assertTrue(fs.exists(LogWatchdog.marker(file)), "看守进程未落 marker")
         } finally {
             ProcessTrees.kill(proc.pid())
             guard?.let { ProcessTrees.kill(it) }

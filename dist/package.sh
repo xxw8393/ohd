@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="$(grep -m1 -E '^[[:space:]]*version *=' build.gradle.kts 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' || echo 0.1.0)"
-VERSION="${VERSION:-0.1.0}"
+VERSION="$(grep -m1 -E '^[[:space:]]*version *=' build.gradle.kts 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' || echo 0.2.0)"
+VERSION="${VERSION:-0.2.0}"
 PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 
 echo "==> 构建"

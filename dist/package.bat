@@ -10,7 +10,7 @@ cd /d "%ROOT%"
 rem ---- 版本号：build.gradle.kts 里的  version = "x.y.z"（允许多余缩进）
 set "VERSION="
 for /f "tokens=1,2,3" %%a in ('findstr /r /c:"version *=" build.gradle.kts') do if not defined VERSION set "VERSION=%%~c"
-if not defined VERSION set "VERSION=0.1.0"
+if not defined VERSION set "VERSION=0.2.0"
 
 rem ---- 平台名（对标 package.sh 的 uname -s/uname -m）
 set "ARCH=%PROCESSOR_ARCHITECTURE%"
@@ -19,12 +19,14 @@ if /i "%ARCH%"=="ARM64" set "ARCH=arm64"
 if /i "%ARCH%"=="X86" set "ARCH=x86"
 set "PLATFORM=windows-%ARCH%"
 
+if /i "%~1"=="--skip-build" goto :after_build
 echo [1/4] 构建
 call "%SELF%build.bat"
 if errorlevel 1 (
   echo build 失败，先解决构建 1>&2
   exit /b 1
 )
+:after_build
 
 echo [2/4] 生成精简运行时（jlink）
 where jlink >nul 2>nul

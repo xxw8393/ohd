@@ -7,7 +7,7 @@
 平台：**OHOS**（hdc）/ **Android**（adb）/ **iOS**（simctl 模拟器、devicectl 真机、idb 触摸注入）。`--platform` 可显式指定，默认自动探测。
 
 **双运行时**：Kotlin Multiplatform 编译，同一份代码出两种产物——原生可执行（启动约 6ms）
-与 JVM 版（约 42ms，含 CDS）。`dist/ohd` 优先用原生，找不到自动回退 JVM。
+与 JVM 版（约 51ms，含 CDS）。`dist/ohd` 优先用原生，找不到自动回退 JVM。
 原生版仅三项图像能力降级（见「运行时选择」）。
 
 设计文档：[`DESIGN.md`](DESIGN.md)（含能力清单、证据包规范、跨端细则、里程碑）。

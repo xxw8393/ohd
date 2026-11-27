@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v0.1.0)'
+        description: 'Release tag (e.g. v0.2.0)'
         required: false
 
 permissions:
@@ -41,13 +41,20 @@ jobs:
           gradle-version: 8.13
 
       - name: Run tests
-        run: gradle test
+        run: gradle jvmTest
 
-      - name: Package (Unix)
+      - name: Package (Unix, JVM)
         if: runner.os != 'Windows'
         run: |
           chmod +x dist/build.sh dist/package.sh dist/ohd
           ./dist/package.sh
+
+      # 原生包只有 posix 入口，Windows 走上面的 JVM 包。
+      - name: Package (Unix, native)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x dist/package-native.sh
+          ./dist/package-native.sh
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -70,6 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -79,5 +88,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: artifacts/ohd-*.zip
-          generate_release_notes: true

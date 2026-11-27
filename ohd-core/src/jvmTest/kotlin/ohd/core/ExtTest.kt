@@ -9,6 +9,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.condition.OS
+import org.junit.jupiter.api.condition.DisabledOnOs
 
 class ExtTest {
 
@@ -79,6 +81,10 @@ class ExtTest {
     }
 
     @Test
+    // chmod 执行位是 POSIX 概念；Windows 上 Files.setPosixFilePermissions 直接抛
+    // UnsupportedOperationException。该防护逻辑本身跨平台，此处只验「非可执行会被拒」，
+    // 在 Windows 上无对应语义可测，跳过而不伪造等价物。
+    @DisabledOnOs(OS.WINDOWS)
     fun `无执行位的裸脚本拒绝执行`() {
         val dir = tempDir()
         val f = write(dir, "raw", "#!/bin/sh\necho hi\n")
