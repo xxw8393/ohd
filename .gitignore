@@ -10,6 +10,9 @@ dist/out/
 dist/runtime/
 dist/ohd-*/
 dist/*.zip
+# AppCDS 归档：由 dist/cds.sh 按本机 JVM 生成，与 JDK 二进制强绑定，不能跨机器复用
+dist/ohd.jsa
+build/cds/
 
 # 真机证据：单会话几十 MB，hilog 会话可到 GB 级（2026-10-18 两个孤儿 log 会话各 12~13GB）
 ohd-evidence/

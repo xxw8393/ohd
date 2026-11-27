@@ -2,10 +2,32 @@
 # ohd 启动包装。两种形态自适应：
 #   开发形态：本脚本在 dist/ 下，jar 由 Gradle installDist 产出
 #   打包形态：lib/ 与 runtime/ 与本脚本同级（同事解压即用，无需 JDK）
+#
+# 启动耗时敏感（agent 每步都调）：本脚本刻意避免 `$(cd … && pwd)` 这类子壳
+# （实测 7.6ms），改用纯参数展开；缺失时才回退子壳。
 set -euo pipefail
 
-SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# --- 自身目录：纯字符串截断，不 fork -------------------------------------------
+# BASH_SOURCE[0] 含 '/' 时可直接剥掉尾段；以 PATH 方式调用（裸 `ohd`）时回退子壳。
+case "${BASH_SOURCE[0]}" in
+  */*) SELF_DIR="${BASH_SOURCE[0]%/*}" ;;
+  *)   SELF_DIR="$(cd "$(dirname "$0")" && pwd)" ;;
+esac
+[ -n "$SELF_DIR" ] || SELF_DIR="."
+# --- 原生可执行优先（最快路径：一次 -x 判断 + exec，无其它 fork） ---------------
+# KMP 迁移后有两套运行时：原生二进制（单独跑 ~6ms）与 JVM（~61ms）。
+# 原生优先，因为 ohd 是 agent 每步都跑一次的工具链，启动税线性叠加。
+# 找不到就回退 JVM —— 两套能力等价（native 侧仅图像标注/GIF/视频帧三项降级）。
+# OHD_FORCE_JVM=1 强制走 JVM：对比性能、或排查「原生特有」的问题时用。
+if [ -z "${OHD_FORCE_JVM-}" ]; then
+  NATIVE="$SELF_DIR/ohd-native"
+  [ -x "$NATIVE" ] || NATIVE="$SELF_DIR/../ohd-cli/build/bin/${OHD_NATIVE_TARGET:-macosArm64}/releaseExecutable/ohd.kexe"
+  [ -x "$NATIVE" ] || NATIVE="$SELF_DIR/../ohd-cli/build/bin/${OHD_NATIVE_TARGET:-macosArm64}/debugExecutable/ohd.kexe"
+  [ -x "$NATIVE" ] && exec "$NATIVE" "$@"
+fi
+
 BUNDLED="$SELF_DIR/runtime/bin/java"
+
 
 if [ -d "$SELF_DIR/lib" ]; then
   LIB="$SELF_DIR/lib"
@@ -17,6 +39,14 @@ else
   exit 1
 fi
 
+# 归档里存的是 classpath 解析后的 jar 路径，这里也必须给绝对路径，否则「相对路径调用 ohd」
+# 会解析出与归档不同的 entry，-Xshare:auto 静默降级（实测 ./ohd 换目录即失效）。
+# 用 $PWD 拼接是纯参数展开，不 fork；仅当 SELF_DIR 本身是相对路径时才需要。
+case "$LIB" in
+  /*) ;;
+  *) LIB="$PWD/$LIB" ;;
+esac
+
 if [ -x "$BUNDLED" ]; then
   JAVA="$BUNDLED"
 elif command -v java >/dev/null 2>&1; then
@@ -26,4 +56,22 @@ else
   exit 1
 fi
 
-exec "$JAVA" -cp "$LIB/*" ohd.cli.MainKt "$@"
+# --- JVM 启动参数 --------------------------------------------------------------
+# 本工具是「短命进程」，JIT 分层编译与并行 GC 的收益全在启动后，短进程只付代价：
+#   TieredStopAtLevel=1  跳过 C2，实测 62ms → 58ms
+#   UseSerialGC          短进程不铺多线程 GC 线程，再省 ~1ms
+#   SharedArchiveFile    AppCDS 类预加载，实测 62ms → 38ms（缺失/版本不符时 -Xshare:auto 静默降级）
+# OHD_JAVA_OPTS 可整体覆盖（排查 JIT 问题、或想跑满 C2 时）。
+CDS="$SELF_DIR/ohd.jsa"
+[ -f "$CDS" ] || CDS="$SELF_DIR/../build/cds/ohd.jsa"
+
+if [ -n "${OHD_JAVA_OPTS-}" ]; then
+  # shellcheck disable=SC2086 # 有意按空格拆分
+  exec "$JAVA" $OHD_JAVA_OPTS -cp "$LIB/*" ohd.cli.MainKt "$@"
+fi
+
+exec "$JAVA" \
+  -XX:TieredStopAtLevel=1 \
+  -XX:+UseSerialGC \
+  -XX:SharedArchiveFile="$CDS" -Xshare:auto \
+  -cp "$LIB/*" ohd.cli.MainKt "$@"

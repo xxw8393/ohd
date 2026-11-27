@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ohd"
 
-include(":ohd-core", ":ohd-image", ":ohd-cli")
+include(":ohd-core", ":ohd-image", ":ohd-cli", ":ohd-platform")
